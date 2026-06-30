@@ -1,0 +1,23 @@
+[user]
+	name = Brij
+	email = brijpatel2106012@gmail.com
+
+
+[init]
+	defaultBranch = main
+
+[push]
+	autoSetupRemote = true
+
+[alias]
+	lg = log --oneline --graph --decorate --all
+
+[core]
+	editor = nvim
+	
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential

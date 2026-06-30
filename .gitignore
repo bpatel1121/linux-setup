@@ -1,0 +1,12 @@
+#Secrets
+.local-secrets
+.git-credentials
+*.key
+*.pem
+*_token
+*.secret
+
+# OS / editor junk
+.DS_Store
+*.swp
+*~
