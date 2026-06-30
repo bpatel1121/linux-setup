@@ -17,7 +17,6 @@ man-db
 mesa
 neovim
 networkmanager
-nodejs
 obsidian
 openssh
 plasma-meta
