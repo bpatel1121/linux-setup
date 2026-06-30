@@ -19,7 +19,7 @@ Clone the repo:
 Symlink the configs into place:
 
     ln -sf ~/dotfiles/.bashrc ~/.bashrc
-    ln - sf ~/dotfiles/.gitconfig ~/.gitconfig
+    ln -sf ~/dotfiles/.gitconfig ~/.gitconfig
     ln -sf ~/dotfiles/.tmux.conf ~/.tmux.conf
     mkdir -p ~/.config/alacritty
     ln -sf ~/dotfiles/alacritty.toml ~/.config/alacritty/alacritty.toml
