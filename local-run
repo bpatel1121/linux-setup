@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: local-run <template-file> -- <command> [args...]" >&2
+  exit 1
+fi
+
+template="$1"
+shift
+
+if [[ $# -lt 1 ]]; then
+  echo "Error: no command given after --" >&2
+  exit 1
+fi
+
+if [[ ! -f "$template" ]]; then
+  echo "Error: template file not found: $template" >&2
+  exit 1
+fi
+
+if [[ ! -f "$HOME/.local-secrets" ]]; then
+  echo "Error: ~/.local-secrets not found" >&2
+  exit 1
+fi
+
+
+# Split a "KEY=VALUE" line on the FIRST '=' only, preserving every
+# '=' in the value (including trailing base64 padding like '==').
+split_kv() {
+  local line="$1"
+  __key="${line%%=*}"
+  __value="${line#*=}"
+}
+
+# Load real values
+declare -A secrets
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+  split_kv "$line"
+  secrets["$__key"]="$__value"
+done < "$HOME/.local-secrets"
+
+# Resolve template
+declare -a env_vars=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+  split_kv "$line"
+  key="$__key"
+  value="$__value"
+  if [[ "$value" =~ ^local://(.+)$ ]]; then
+    ref="${BASH_REMATCH[1]}"
+    if [[ -z "${secrets[$ref]:-}" ]]; then
+      echo "Error: reference local://$ref not found in ~/.local-secrets" >&2
+      exit 1
+    fi
+    env_vars+=("${key}=${secrets[$ref]}")
+  else
+    env_vars+=("${key}=${value}")
+  fi
+done < "$template"
+
+exec env "${env_vars[@]}" "$@"
