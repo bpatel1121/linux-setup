@@ -1,0 +1,8 @@
+alacritty
+code
+firefox
+mesa
+obsidian
+plasma-meta
+sddm
+thunar
