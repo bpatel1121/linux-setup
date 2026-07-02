@@ -55,3 +55,4 @@ alias c='clear'
 # Disable Ctrl-S freeze
 stty -ixon
 
+[ -f ~/.bashrc.local ] && source ~/.bashrc.local
