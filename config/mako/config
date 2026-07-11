@@ -1,0 +1,46 @@
+# Cyberpunk · Cybrcolors
+font=JetBrainsMono Nerd Font 11
+background-color=#0A0E1A
+text-color=#C8D0E0
+border-color=#F230B2
+border-size=2
+border-radius=14
+progress-color=over #A130F2
+padding=12,16
+margin=12
+default-timeout=4000
+max-visible=5
+anchor=top-right
+width=360
+height=140
+icons=1
+max-icon-size=48
+format=<b>%s</b>\n%b
+
+# Click actions
+on-button-left=invoke-default-action
+on-button-right=dismiss
+on-button-middle=exec makoctl dismiss --all
+
+# Stack notifications from the same app
+group-by=app-name
+
+[urgency=low]
+border-color=#29BECC
+text-color=#898D99
+default-timeout=3000
+
+[urgency=high]
+border-color=#F24848
+text-color=#F24848
+default-timeout=0
+
+# Spotify notifications get a green border + bigger album art
+[app-name=Spotify]
+border-color=#30F291
+max-icon-size=64
+default-timeout=6000
+
+# Do Not Disturb — toggle with: makoctl mode -t dnd
+[mode=dnd]
+invisible=1
