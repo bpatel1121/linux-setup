@@ -102,3 +102,27 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+#
+
+# Peronsal Aliases
+alias gs='git status'
+alias gl='git lg' #lg is in .gitconfig
+alias ..='cd ..'
+alias ~='cd ~'
+alias vi='nvim'
+alias ga.='git add .'
+alias ga='git add'
+alias gp='git push'
+alias gcm='git commit -m'
+alias ta='tmux attach'
+
+# Safety Nets
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Convenience
+alias c='clear'
+
+# Disable Ctrl-S freeze
+stty -ixon
