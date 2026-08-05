@@ -12,8 +12,12 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN_DIR="$HOME/.local/bin"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d-%H%M%S)"
 
-# AUR packages guaranteed regardless of packages/aur.txt contents.
-REQUIRED_AUR=(spotify)
+# Dotfiles live at the repo root (not in a subdir) and link into ~ directly.
+HOME_DOTFILES=(.bashrc .zshrc .gitconfig .tmux.conf)
+
+# The Hyprland/waybar/wofi/mako config is its own repo — see install_hypr.
+HYPR_REPO="https://github.com/bpatel1121/hyprland"
+LAZYVIM_STARTER="https://github.com/LazyVim/starter"
 
 # --- output helpers ----------------------------------------------------------
 c_info=$'\e[1;36m'; c_ok=$'\e[1;32m'; c_warn=$'\e[1;33m'; c_err=$'\e[1;31m'; c_off=$'\e[0m'
@@ -40,6 +44,22 @@ read_pkg_list() {
   local file="$1"
   [[ -f "$file" ]] || { warn "missing $file — skipping"; return 0; }
   sed -e 's/#.*//' -e 's/[[:space:]]\+//g' -e '/^$/d' "$file"
+}
+
+# clone_or_pull <url> <dest> [full]
+# Shallow by default — right for third-party repos we only ever consume. Pass
+# "full" for repos you edit and push from; shallow clones make that awkward.
+clone_or_pull() {
+  local url="$1" dest="$2" depth="${3:-shallow}"
+  if [[ -d "$dest/.git" ]]; then
+    info "Updating $(basename "$dest")"
+    git -C "$dest" pull --ff-only --quiet || warn "pull failed for $dest (leaving as-is)"
+  else
+    info "Cloning $(basename "$dest")"
+    local -a args=(clone)
+    [[ "$depth" == full ]] || args+=(--depth=1)
+    git "${args[@]}" "$url" "$dest"
+  fi
 }
 
 # --- 1. system update + base toolchain ---------------------------------------
@@ -102,13 +122,11 @@ import_spotify_key() {
 }
 
 # --- 5. AUR packages ---------------------------------------------------------
+# packages/aur.txt is the single source of truth. Note that `yay` itself does not
+# belong in it: install_yay bootstraps yay-bin, and the two conflict as providers.
 install_aur_packages() {
   local -a pkgs
-  mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/aur.txt")
-  pkgs+=("${REQUIRED_AUR[@]}")
-
-  # dedupe, preserving nothing in particular
-  mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sort -u)
+  mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u)
   if ((${#pkgs[@]} == 0)); then warn "no AUR packages to install"; return 0; fi
 
   # Only fuss with the GPG key if spotify is actually in the set.
@@ -117,8 +135,21 @@ install_aur_packages() {
   fi
 
   info "Installing ${#pkgs[@]} AUR package(s) via yay"
-  yay -S --needed --noconfirm -- "${pkgs[@]}"
-  ok "AUR packages done"
+  if yay -S --needed --noconfirm -- "${pkgs[@]}"; then
+    ok "AUR packages done"
+    return 0
+  fi
+
+  # A single bad name — renamed, orphaned, or a debug split-package that isn't a
+  # real target — fails the whole batch. Retry individually so everything that
+  # *is* installable still lands, instead of set -e killing the run here.
+  warn "batch install failed — retrying one package at a time"
+  local p failed=0
+  for p in "${pkgs[@]}"; do
+    yay -S --needed --noconfirm -- "$p" || { warn "AUR install failed: $p"; ((failed++)) || true; }
+  done
+  ((failed == 0)) && ok "AUR packages done" || warn "$failed AUR package(s) failed — see above"
+  return 0
 }
 
 # --- 6. oh-my-zsh + plugins --------------------------------------------------
@@ -133,17 +164,6 @@ OMZ_PLUGINS=(
   "zsh-autosuggestions     https://github.com/zsh-users/zsh-autosuggestions"
   "zsh-syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting"
 )
-
-clone_or_pull() {
-  local url="$1" dest="$2"
-  if [[ -d "$dest/.git" ]]; then
-    info "Updating $(basename "$dest")"
-    git -C "$dest" pull --ff-only --quiet || warn "pull failed for $dest (leaving as-is)"
-  else
-    info "Cloning $(basename "$dest")"
-    git clone --depth=1 "$url" "$dest"
-  fi
-}
 
 install_oh_my_zsh() {
   clone_or_pull "https://github.com/ohmyzsh/ohmyzsh" "$OMZ_DIR"
@@ -167,7 +187,20 @@ install_oh_my_zsh() {
   fi
 }
 
-# --- 7. dotfile symlinks -----------------------------------------------------
+# --- 7. hyprland desktop config ----------------------------------------------
+# Hyprland, waybar, wofi and mako are all installed from packages/pacman.txt, but
+# none of them are configured by this repo — the whole desktop lives in a separate
+# repo whose root *is* ~/.config/hypr (hyprland.lua + scripts/ + themes/). So it's
+# a plain clone into place, nothing to link. Without it a fresh box comes up with
+# Hyprland running an empty config.
+#
+# Full clone rather than shallow: this one you actually edit and push from.
+install_hypr() {
+  clone_or_pull "$HYPR_REPO" "$CONFIG_HOME/hypr" full
+  ok "hyprland config ready"
+}
+
+# --- 8. dotfile symlinks -----------------------------------------------------
 # Links repo dirs into ~/.config. Existing real files/dirs get moved to a
 # timestamped backup rather than clobbered.
 link() {
@@ -209,19 +242,13 @@ link_configs() {
     done
   fi
 
-  # Anything in home/ -> ~/<name>   (.zshrc, .gitconfig, .tmux.conf, ...)
+  # Root-level dotfiles -> ~/<name>   (.zshrc, .gitconfig, .tmux.conf, ...)
   # Runs after install_oh_my_zsh so nothing can clobber the .zshrc link.
-  if [[ -d "$REPO_DIR/home" ]]; then
-    info "Linking home/ -> $HOME"
-    local f
-    shopt -s dotglob nullglob
-    for f in "$REPO_DIR/home"/*; do
-      link "$f" "$HOME/$(basename "$f")"
-    done
-    shopt -u dotglob nullglob
-  else
-    warn "no home/ dir — ~/.zshrc, ~/.gitconfig, ~/.tmux.conf are unmanaged."
-  fi
+  info "Linking dotfiles -> $HOME"
+  local f
+  for f in "${HOME_DOTFILES[@]}"; do
+    link "$REPO_DIR/$f" "$HOME/$f"
+  done
 
   info "Installing local-run"
   mkdir -p "$BIN_DIR"
@@ -235,6 +262,41 @@ link_configs() {
   esac
 }
 
+# --- 9. LazyVim --------------------------------------------------------------
+# Runs after link_configs, which has already pointed ~/.config/nvim at
+# config/nvim. All that's left is fetching the plugins.
+install_lazyvim() {
+  if ! command -v nvim >/dev/null; then
+    warn "neovim not installed — skipping LazyVim"
+    return 0
+  fi
+
+  # Only reachable if config/nvim is missing from the repo (nothing vendored yet).
+  if [[ ! -e "$CONFIG_HOME/nvim" ]]; then
+    info "No config/nvim in the repo — cloning the LazyVim starter"
+    git clone --depth=1 "$LAZYVIM_STARTER" "$CONFIG_HOME/nvim"
+    rm -rf "$CONFIG_HOME/nvim/.git"
+  fi
+
+  # lua/config/lazy.lua bootstraps lazy.nvim itself on first start, so `install`
+  # covers a cold machine. `restore` then pins every plugin to the revisions in
+  # lazy-lock.json, reproducing the exact set this repo was tested with.
+  #
+  # Deliberately NOT `Lazy! sync`: sync updates plugins to latest and rewrites
+  # lazy-lock.json — and since ~/.config/nvim is a symlink into this repo, that
+  # would dirty the git tree on every provisioning run.
+  #
+  # Never fatal: a flaky GitHub fetch shouldn't take down the whole run, and
+  # lazy.nvim installs anything still missing on the next interactive launch.
+  info "Installing LazyVim plugins (slow on a fresh box)"
+  if nvim --headless "+Lazy! install" +qa && nvim --headless "+Lazy! restore" +qa; then
+    ok "LazyVim ready"
+  else
+    warn "plugin install failed — retry later with:"
+    warn "  nvim --headless '+Lazy! install' +qa && nvim --headless '+Lazy! restore' +qa"
+  fi
+}
+
 # --- main --------------------------------------------------------------------
 main() {
   preflight
@@ -243,12 +305,17 @@ main() {
   install_yay
   install_aur_packages
   install_oh_my_zsh
+  install_hypr      # before link_configs: wezterm.lua reads the theme tree
   link_configs
+  install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
 
   echo
   ok "Provisioning complete."
-  [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR"
-  echo "Reload mako with:  makoctl reload"
+  # `|| true`: without it, set -e exits here on a re-run that backed nothing up,
+  # skipping the hint below and returning non-zero from a perfectly good run.
+  [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR" || true
+  echo "Start a new shell, then apply the desktop theme with:"
+  echo "  ~/.config/hypr/scripts/theme-apply.sh"
 }
 
 main "$@"

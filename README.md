@@ -1,81 +1,80 @@
 # linux-setup
 
-My Arch Linux dotfiles and packages. Configs for bash, git, tmux, and Alacritty,
-plus the package lists and a `setup.sh` to recreate a working environment on a
-new machine.
-
-Hardware packages (CPU microcode, GPU drivers) are deliberately **not** in these
-lists or the script — they differ per box and are installed by hand. The lists
-stay transferable to any Arch machine, present or future.
+My Arch Linux dotfiles and packages, plus a `setup.sh` that recreates a working
+environment on a new machine in one command: packages, `yay`, oh-my-zsh, the
+Hyprland desktop config, every dotfile symlinked, and LazyVim with its plugins
+already installed.
 
 ## Contents
 
-- `.bashrc` — shell config
+- `.bashrc`, `.zshrc` — shell config
 - `.gitconfig` — git identity + aliases
 - `.tmux.conf` — tmux config
-- `alacritty.toml` — terminal config
-- `package.txt` — core packages (CLI, base system, boot) — every Arch machine
-- `gui-package.txt` — desktop packages (KDE + GUI apps) — machines with a display
-- `setup.sh` — one-shot provisioner (symlinks + packages + yay)
+- `config/nvim/` — LazyVim config (plugins pinned by `lazy-lock.json`)
+- `config/wezterm/` — terminal config
+- `packages/pacman.txt` — official-repo packages
+- `packages/aur.txt` — AUR packages
+- `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
 - `local-run` — secret-injection wrapper (see below)
 
 ## Quick start
 
 ```
-git clone https://github.com/bpatel1121/linux-setup.git ~/dotfiles
-cd ~/dotfiles
-chmod +x setup.sh
+git clone https://github.com/bpatel1121/linux-setup.git ~/Projects/linux-setup
+cd ~/Projects/linux-setup
 ./setup.sh
 ```
-
-`setup.sh` symlinks the configs, installs the core packages, prompts about the
-desktop packages, and bootstraps `yay`. Hardware (CPU microcode, GPU drivers) is
-per-box — install it separately by hand afterward. Flags: `--gui` / `--no-gui`
-skip the prompt (useful for non-interactive or headless runs).
 
 To sync later, just pull and re-run — every step is idempotent:
 
 ```
-cd ~/dotfiles && git pull && ./setup.sh
+cd ~/Projects/linux-setup && git pull && ./setup.sh
 ```
 
-## Manual setup (what setup.sh does)
+## What setup.sh does
 
-If you'd rather run it by hand, or the script isn't available:
+1. `pacman -Syu`, then the base toolchain (`base-devel git curl zsh tmux`).
+2. Installs `packages/pacman.txt`.
+3. Bootstraps `yay` from `yay-bin` (prebuilt — no Go compile). Don't put `yay`
+   itself in `aur.txt`: it conflicts with `yay-bin` as a provider.
+4. Installs `packages/aur.txt`. If the batch fails it retries package-by-package,
+   so one dead AUR name warns instead of aborting the run.
+5. Clones oh-my-zsh + `zsh-autosuggestions` / `zsh-syntax-highlighting`, and
+   `chsh`es to zsh.
+6. Clones the **Hyprland config** (see below) into `~/.config/hypr`.
+7. Symlinks `config/*` → `~/.config/<name>` and the root dotfiles → `~`. Anything
+   real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
+   symlinks owned by another repo are left alone with a warning.
+8. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
+   so the first `nvim` launch is instant and plugins match `lazy-lock.json`.
+
+Symlinks, not copies — edit either side and both change, and `git pull` updates
+the live config immediately.
+
+## The Hyprland config lives in a separate repo
+
+`hyprland`, `waybar`, `wofi`, and `mako` are installed from `pacman.txt`, but
+none of them are configured here. The whole desktop — `hyprland.lua`, the theme
+switcher, and the themes themselves — is
+[bpatel1121/hyprland](https://github.com/bpatel1121/hyprland), whose repo root
+*is* `~/.config/hypr`. `setup.sh` clones it there directly; there's nothing to
+link.
+
+That repo owns `~/.config/mako/config` too — `scripts/theme-apply.sh` repoints it
+on every theme switch, so `~/.config/mako` must stay a real directory and is
+deliberately not managed here.
+
+After provisioning, apply the active theme with:
 
 ```
-# 1. symlink configs
-ln -sf ~/dotfiles/.bashrc ~/.bashrc
-ln -sf ~/dotfiles/.gitconfig ~/.gitconfig
-ln -sf ~/dotfiles/.tmux.conf ~/.tmux.conf
-mkdir -p ~/.config/alacritty
-ln -sf ~/dotfiles/alacritty.toml ~/.config/alacritty/alacritty.toml
-
-# 2. core packages (every machine)
-sudo pacman -S --needed - < ~/dotfiles/package.txt
-
-# 3. desktop packages (machines with a display only)
-sudo pacman -S --needed - < ~/dotfiles/gui-package.txt
-
-# 4. hardware layer — per box, install CPU microcode + GPU drivers by hand
-
-# 5. bootstrap yay (not in the official repos, so build from source)
-sudo pacman -S --needed git base-devel
-git clone https://aur.archlinux.org/yay.git /tmp/yay
-cd /tmp/yay && makepkg -si
-
-# 6. apply shell config
-source ~/.bashrc
+~/.config/hypr/scripts/theme-apply.sh
 ```
 
 ## Hardware
 
-CPU microcode and GPU drivers depend on the actual hardware in each box, so
-they're not in the transferable lists or the script. Install them by hand per
-machine after running setup.
-
-`mesa` (generic OpenGL) is intentionally in `gui-package.txt`, not treated as a
-hardware package — it's vendor-neutral and works on any graphical machine.
+CPU microcode and GPU drivers are deliberately **not** in these lists — they
+differ per box, and keeping them out is what makes the lists transferable to any
+Arch machine. Install whatever the hardware needs by hand after provisioning.
 
 ## Regenerating the package lists
 
@@ -90,6 +89,10 @@ pacman -Qqem > /tmp/aur-explicit.txt    # AUR/foreign, for reference
 `-Qqe` lists explicitly installed packages (not pulled-in dependencies);
 `-n` = repo, `-m` = AUR.
 
+Two things to strip from the output before committing: `-debug` split-packages
+(`yay-debug` and friends aren't installable targets), and `yay` itself, which
+`setup.sh` bootstraps as `yay-bin`.
+
 ## Secret injection (local-run)
 
 `local-run` injects secrets into a command's environment from a local,
@@ -97,19 +100,9 @@ gitignored secrets file. The secrets themselves are NEVER committed.
 
 ### Setup on a new machine
 
-The `local-run` script comes with this repo. Make it executable:
-
-```
-chmod +x ~/dotfiles/local-run
-```
-
-Optionally symlink it onto your PATH:
-
-```
-ln -sf ~/dotfiles/local-run ~/.local/bin/local-run
-```
-
-Create your local secrets file (NEVER committed — gitignored):
+`setup.sh` already makes `local-run` executable and links it to
+`~/.local/bin/local-run`, so all that's left is creating your local secrets file
+(NEVER committed — gitignored):
 
 ```
 nvim ~/.local-secrets

@@ -1,8 +1,16 @@
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
 [user]
+	email = brijpatel2106012@gmail.com
+	name = Brij Patel
+
+	[user]
 	name = Brij
 	email = brijpatel2106012@gmail.com
-
-
 [init]
 	defaultBranch = main
 
@@ -10,14 +18,5 @@
 	autoSetupRemote = true
 
 [alias]
-	lg = log --oneline --graph --decorate --all
+	lg = log --pretty=format:'%C(yellow)%h%C(auto)%d %C(cyan)%an %C(green)%ar%C(reset) %s' --graph
 
-[core]
-	editor = nvim
-	
-[credential "https://github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential
-[credential "https://gist.github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential

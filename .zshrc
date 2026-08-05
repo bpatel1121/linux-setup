@@ -107,6 +107,7 @@ source $ZSH/oh-my-zsh.sh
 # Peronsal Aliases
 alias gs='git status'
 alias gl='git lg' #lg is in .gitconfig
+alias glo='git lg --oneline -10'
 alias ..='cd ..'
 alias ~='cd ~'
 alias vi='nvim'
@@ -114,7 +115,7 @@ alias ga.='git add .'
 alias ga='git add'
 alias gp='git push'
 alias gcm='git commit -m'
-alias ta='tmux attach'
+alias ta='tmux attach -t'
 
 # Safety Nets
 alias rm='rm -i'
@@ -126,3 +127,6 @@ alias c='clear'
 
 # Disable Ctrl-S freeze
 stty -ixon
+
+#Zoxide
+eval "$(zoxide init --cmd cd zsh)"
