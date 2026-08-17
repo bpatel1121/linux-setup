@@ -11,9 +11,15 @@ config.window_background_opacity = 0.92
 -- Pull colors from the currently active theme (falls back to WezTerm's default
 -- if the theme has no wezterm/colors.lua yet).
 local home = os.getenv("HOME")
-local ok, colors = pcall(dofile, home .. "/.config/hypr/themes/current/wezterm/colors.lua")
+local theme_colors = home .. "/.config/hypr/themes/current/wezterm/colors.lua"
+local ok, colors = pcall(dofile, theme_colors)
 if ok and type(colors) == "table" then
     config.colors = colors
 end
+
+-- WezTerm only auto-reloads when a *watched* file changes, and dofile'd files
+-- aren't watched by default. Watching the theme colors file makes open
+-- terminals recolor live on SUPER+T theme switches instead of only new ones.
+wezterm.add_to_config_reload_watch_list(theme_colors)
 
 return config

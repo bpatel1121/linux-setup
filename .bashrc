@@ -25,14 +25,14 @@ alias la='ls -A'
 # Bash Completion
 if ! shopt -oq posix; then
 	if [ -f /usr/share/bash-completion/bash_completion ]; then
-		/usr/share/bash-completion/bash_completion
+		. /usr/share/bash-completion/bash_completion
 	fi
 fi
 
 # User-local bin (Claude Code + user installs)
 export PATH="$HOME/.local/bin:$PATH"
 
-# Peronsal Aliases
+# Personal Aliases
 alias gs='git status'
 alias gl='git lg' #lg is in .gitconfig
 alias ..='cd ..'

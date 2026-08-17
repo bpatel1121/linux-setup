@@ -14,6 +14,7 @@ already installed.
 - `config/wezterm/` — terminal config
 - `packages/pacman.txt` — official-repo packages
 - `packages/aur.txt` — AUR packages
+- `packages/ground-up.txt` — toolchain for [ground-up](https://github.com/bpatel1121/ground-up) (FPGA flow, cross-compilers, QEMU, perf); delete on machines that don't need it
 - `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
 - `local-run` — secret-injection wrapper (see below)
 
@@ -34,18 +35,22 @@ cd ~/Projects/linux-setup && git pull && ./setup.sh
 ## What setup.sh does
 
 1. `pacman -Syu`, then the base toolchain (`base-devel git curl zsh tmux`).
-2. Installs `packages/pacman.txt`.
+2. Installs `packages/pacman.txt` (+ `packages/ground-up.txt` if present).
 3. Bootstraps `yay` from `yay-bin` (prebuilt — no Go compile). Don't put `yay`
    itself in `aur.txt`: it conflicts with `yay-bin` as a provider.
 4. Installs `packages/aur.txt`. If the batch fails it retries package-by-package,
    so one dead AUR name warns instead of aborting the run.
-5. Clones oh-my-zsh + `zsh-autosuggestions` / `zsh-syntax-highlighting`, and
+5. Enables system services (`NetworkManager`, `sddm`, `bluetooth`, `ufw`) and
+   activates the firewall with deny-in/allow-out defaults. Installing a package
+   does not enable its service — without this a fresh box boots to a black
+   screen with no network.
+6. Clones oh-my-zsh + `zsh-autosuggestions` / `zsh-syntax-highlighting`, and
    `chsh`es to zsh.
-6. Clones the **Hyprland config** (see below) into `~/.config/hypr`.
-7. Symlinks `config/*` → `~/.config/<name>` and the root dotfiles → `~`. Anything
+7. Clones the **Hyprland config** (see below) into `~/.config/hypr`.
+8. Symlinks `config/*` → `~/.config/<name>` and the root dotfiles → `~`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.
-8. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
+9. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
    so the first `nvim` launch is instant and plugins match `lazy-lock.json`.
 
 Symlinks, not copies — edit either side and both change, and `git pull` updates

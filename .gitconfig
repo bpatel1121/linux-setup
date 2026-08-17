@@ -1,16 +1,14 @@
+[user]
+	name = Brij Patel
+	email = brijpatel2106012@gmail.com
+
 [credential "https://github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
-[user]
-	email = brijpatel2106012@gmail.com
-	name = Brij Patel
 
-	[user]
-	name = Brij
-	email = brijpatel2106012@gmail.com
 [init]
 	defaultBranch = main
 
@@ -19,4 +17,3 @@
 
 [alias]
 	lg = log --pretty=format:'%C(yellow)%h%C(auto)%d %C(cyan)%an %C(green)%ar%C(reset) %s' --graph
-

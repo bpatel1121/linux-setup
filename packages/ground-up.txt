@@ -1,0 +1,24 @@
+# Toolchain for the ground-up project (github.com/bpatel1121/ground-up).
+# Transferable to any Arch box — no hardware-specific packages here.
+# Delete this file if a machine doesn't need the project toolchain.
+
+# Sprint 2-4 — Verilog sim + FPGA open flow
+yosys
+nextpnr
+iverilog
+gtkwave
+
+# Sprint 6 — ARM bare-metal (STM32, no HAL)
+arm-none-eabi-gcc
+arm-none-eabi-newlib
+arm-none-eabi-gdb
+openocd
+
+# Sprint 7+ — kernel boot, debugging, perf
+qemu-full
+gdb
+perf
+
+# Logic analyzer (UART debugging)
+pulseview
+sigrok-cli

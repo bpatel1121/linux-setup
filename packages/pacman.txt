@@ -22,7 +22,6 @@ hyprland
 hyprpaper
 jre-openjdk
 lazygit
-libpulse
 linux
 linux-firmware
 linux-headers
@@ -45,7 +44,6 @@ qt6-wayland
 ripgrep
 rustup
 sddm
-seahorse
 slurp
 snapper
 sof-firmware
@@ -56,12 +54,10 @@ ttf-jetbrains-mono-nerd
 ufw
 unzip
 waybar
-wev
 wget
 wireplumber
 wl-clipboard
 wofi
-wpa_supplicant
 xdg-desktop-portal-hyprland
 yazi
 zoxide

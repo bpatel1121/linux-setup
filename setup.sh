@@ -74,7 +74,11 @@ install_base() {
 # --- 2. pacman packages ------------------------------------------------------
 install_pacman_packages() {
   local -a pkgs
-  mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/pacman.txt")
+  # ground-up.txt: toolchain for the ground-up project (FPGA flow, cross
+  # compilers, QEMU, perf). Separate file so the core list stays lean — delete
+  # the file and nothing else changes.
+  mapfile -t pkgs < <(cat <(read_pkg_list "$REPO_DIR/packages/pacman.txt") \
+                          <(read_pkg_list "$REPO_DIR/packages/ground-up.txt") | sort -u)
   if ((${#pkgs[@]} == 0)); then warn "no pacman packages listed"; return 0; fi
 
   info "Installing ${#pkgs[@]} pacman package(s)"
@@ -297,13 +301,76 @@ install_lazyvim() {
   fi
 }
 
+# --- 10. system services -----------------------------------------------------
+# Installing a package does NOT enable its service. Without this step a truly
+# fresh box boots with no network, no display manager, no bluetooth, and an
+# inert firewall. `systemctl enable` is idempotent, so this is free on re-runs.
+enable_services() {
+  info "Enabling system services"
+  local s
+  for s in NetworkManager sddm bluetooth ufw; do
+    if systemctl list-unit-files --type=service | grep -q "^$s.service"; then
+      sudo systemctl enable "$s" >/dev/null 2>&1 && ok "enabled $s" || warn "could not enable $s"
+    else
+      warn "$s.service not found — is the package installed?"
+    fi
+  done
+
+  # ufw: enabling the unit starts the daemon, but the firewall itself must be
+  # turned on once with sane defaults. Idempotent: skip if already active.
+  if command -v ufw >/dev/null && ! sudo ufw status | grep -q "^Status: active"; then
+    info "Activating ufw (deny incoming / allow outgoing)"
+    sudo ufw default deny incoming  >/dev/null
+    sudo ufw default allow outgoing >/dev/null
+    sudo ufw --force enable         >/dev/null
+    ok "ufw active"
+  fi
+}
+
+# --- audit mode: ./setup.sh --audit ------------------------------------------
+# Answers "is this box still minimal?" without installing anything:
+#   1. explicit packages on the box that the repo doesn't know about (drift —
+#      hardware packages are EXPECTED here, that's the per-box set)
+#   2. packages in the lists but missing from the box
+#   3. orphaned dependencies nothing requires anymore
+#   4. explicit leaves (-Qqet): the true "stuff I chose" list
+audit_packages() {
+  local all_lists
+  all_lists=$(cat <(read_pkg_list "$REPO_DIR/packages/pacman.txt") \
+                  <(read_pkg_list "$REPO_DIR/packages/ground-up.txt") | sort -u)
+
+  info "Explicit REPO packages not in packages/*.txt (drift — hardware is expected here):"
+  comm -23 <(pacman -Qqen | sort) <(printf '%s\n' "$all_lists") | sed 's/^/    /'
+
+  info "Foreign (AUR) packages not in aur.txt (yay itself + -debug are expected):"
+  comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) | sed 's/^/    /'
+
+  info "Listed in the repo but NOT installed on this box:"
+  comm -13 <(pacman -Qqen | sort; pacman -Qqem | sort) \
+           <(printf '%s\n' "$all_lists"; read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) | sort -u | sed 's/^/    /'
+
+  info "Orphaned dependencies (remove with: sudo pacman -Rns \$(pacman -Qdtq)):"
+  pacman -Qdtq 2>/dev/null | sed 's/^/    /' || ok "none"
+
+  echo
+  info "Full explicit-leaf list (explicit AND nothing depends on it):"
+  pacman -Qqet | sed 's/^/    /'
+}
+
 # --- main --------------------------------------------------------------------
 main() {
+  if [[ "${1:-}" == "--audit" ]]; then
+    command -v pacman >/dev/null || die "pacman not found"
+    audit_packages
+    exit 0
+  fi
+
   preflight
   install_base
   install_pacman_packages
   install_yay
   install_aur_packages
+  enable_services
   install_oh_my_zsh
   install_hypr      # before link_configs: wezterm.lua reads the theme tree
   link_configs

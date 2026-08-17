@@ -1,5 +1,5 @@
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+# User-local bin (local-run, claude, user installs)
+export PATH="$HOME/.local/bin:$PATH"
 
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -70,7 +70,10 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git)
+# zsh-autosuggestions / zsh-syntax-highlighting are cloned into $ZSH_CUSTOM/plugins
+# by setup.sh — listing them here is what actually loads them.
+# (syntax-highlighting must stay last; it wraps the line editor.)
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -82,11 +85,8 @@ source $ZSH/oh-my-zsh.sh
 # export LANG=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='nvim'
-# fi
+export EDITOR='nvim'
+export VISUAL='nvim'
 
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
@@ -104,7 +104,7 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 #
 
-# Peronsal Aliases
+# Personal Aliases
 alias gs='git status'
 alias gl='git lg' #lg is in .gitconfig
 alias glo='git lg --oneline -10'
