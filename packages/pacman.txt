@@ -34,6 +34,7 @@ networkmanager
 noto-fonts-emoji
 obsidian
 openssh
+pacman-contrib
 pipewire
 pipewire-alsa
 pipewire-jack
