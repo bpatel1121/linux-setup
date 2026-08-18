@@ -20,3 +20,8 @@ highlight_event_days = True
 # pane follows. The grid's highlighted days already say where events live;
 # listing a fortnight beside it was clutter.
 timedelta = 1d
+
+[view]
+# Without this, ikhal IGNORES timedelta and fills the right column with as
+# many days as fit. False = the column shows exactly timedelta (one day).
+dynamic_days = False
