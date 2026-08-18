@@ -67,7 +67,6 @@ waybar
 wget
 wireplumber
 wl-clipboard
-wlogout
 wofi
 xdg-desktop-portal-hyprland
 yazi

@@ -3,3 +3,4 @@
 claude-code
 claude-desktop
 wezterm-git
+wlogout

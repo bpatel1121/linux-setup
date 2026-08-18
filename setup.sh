@@ -337,12 +337,16 @@ audit_packages() {
   info "Explicit REPO packages not in packages/*.txt (drift — hardware is expected here):"
   comm -23 <(pacman -Qqen | sort) <(printf '%s\n' "$all_lists") | sed 's/^/    /'
 
-  info "Foreign (AUR) packages not in aur.txt (yay itself + -debug are expected):"
-  comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) | sed 's/^/    /'
+  info "Foreign (AUR) packages not in aur.txt:"
+  # yay itself and -debug artifacts are expected foreigners — filter the noise.
+  comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) \
+    | grep -vE '^(yay|yay-bin)$|-debug$' | sed 's/^/    /'
 
   info "Listed in the repo but NOT installed on this box:"
-  comm -13 <(pacman -Qqen | sort; pacman -Qqem | sort) \
-           <(printf '%s\n' "$all_lists"; read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) | sort -u | sed 's/^/    /'
+  # each comm input must be ONE globally sorted stream, not two sorted lists
+  # concatenated — that's what tripped "comm: file is not in sorted order".
+  comm -13 <({ pacman -Qqen; pacman -Qqem; } | sort -u) \
+           <({ printf '%s\n' "$all_lists"; read_pkg_list "$REPO_DIR/packages/aur.txt"; } | sort -u) | sed 's/^/    /'
 
   info "Orphaned dependencies (remove with: sudo pacman -Rns \$(pacman -Qdtq)):"
   pacman -Qdtq 2>/dev/null | sed 's/^/    /' || ok "none"
