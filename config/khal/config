@@ -1,0 +1,22 @@
+# khal — provisioned by linux-setup (config/khal -> ~/.config/khal).
+# One local collection; vdirsyncer can add synced ones later.
+[calendars]
+
+[[personal]]
+path = ~/.local/share/khal/calendars/personal
+type = calendar
+
+[locale]
+timeformat = %H:%M
+dateformat = %Y-%m-%d
+longdateformat = %Y-%m-%d
+datetimeformat = %Y-%m-%d %H:%M
+longdatetimeformat = %Y-%m-%d %H:%M
+
+[default]
+default_calendar = personal
+highlight_event_days = True
+# The event pane shows ONLY the selected day — arrow around the grid and the
+# pane follows. The grid's highlighted days already say where events live;
+# listing a fortnight beside it was clutter.
+timedelta = 1d

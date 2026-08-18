@@ -3,5 +3,6 @@
 bibata-cursor-theme-bin
 claude-code
 claude-desktop
+poweralertd
 wezterm-git
 wlogout

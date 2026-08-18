@@ -28,6 +28,7 @@ hypridle
 hyprland
 hyprlock
 jre-openjdk
+khal
 lazygit
 linux
 linux-firmware
@@ -64,9 +65,11 @@ sudo
 swaync
 swayosd
 tmux
+todoman
 ttf-jetbrains-mono-nerd
 ufw
 unzip
+vdirsyncer
 waybar
 wget
 wireplumber
