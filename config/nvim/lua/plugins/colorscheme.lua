@@ -14,21 +14,44 @@ local function theme_colorscheme()
     return "tokyonight" -- LazyVim's default — sane when no theme is linked yet
 end
 
--- gruvbox styles CursorLineNr quieter than tokyonight does, and the current
--- line number popping is worth keeping — re-assert it in gruvbox's own accent
--- (the same "active" yellow the bar uses). tokyonight already pops by default.
+-- Per-scheme fixups, re-asserted after any colorscheme load:
+--   gruvbox    — brighten CursorLineNr in the theme's active yellow (the
+--                stock one is too quiet; the popping line number stays).
+--   cyberdream — its neon-green strings dominate config-heavy files and
+--                fight the desktop's pink/cyan/amber discipline. Retint
+--                strings to cyan; green stays a STATE color, like the bar.
 vim.api.nvim_create_autocmd("ColorScheme", {
-    group = vim.api.nvim_create_augroup("theme_cursorlinenr", { clear = true }),
+    group = vim.api.nvim_create_augroup("theme_fixups", { clear = true }),
     callback = function(ev)
         if ev.match == "gruvbox" then
             vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
+        elseif ev.match == "cyberdream" then
+            -- Retint to the Cybrcolors vocabulary the whole desktop speaks:
+            -- pink = structure (keywords — the bulk of the pop), cyan =
+            -- readouts (functions, strings), amber = literals. Green stays
+            -- a state color, exactly like the bar.
+            local pink, cyan, amber = "#F230B2", "#29BECC", "#F2D230"
+            local fix = {
+                Keyword = { fg = pink },            ["@keyword"] = { fg = pink },
+                Statement = { fg = pink },          ["@keyword.function"] = { fg = pink },
+                Conditional = { fg = pink },        Repeat = { fg = pink },
+                Function = { fg = cyan, bold = true },
+                ["@function"] = { fg = cyan, bold = true },
+                String = { fg = cyan },             ["@string"] = { fg = cyan },
+                Constant = { fg = amber },          Number = { fg = amber },
+                Boolean = { fg = amber },
+                CursorLineNr = { fg = pink, bold = true },
+            }
+            for group, hl in pairs(fix) do
+                vim.api.nvim_set_hl(0, group, hl)
+            end
         end
     end,
 })
 
 return {
-    -- gruvbox installed alongside LazyVim's stock tokyonight, so SUPER+T
-    -- never needs a plugin sync
+    -- both schemes installed so SUPER+T never needs a plugin sync
     { "ellisonleao/gruvbox.nvim" },
+    { "scottmckendry/cyberdream.nvim" },
     { "LazyVim/LazyVim", opts = { colorscheme = theme_colorscheme() } },
 }
