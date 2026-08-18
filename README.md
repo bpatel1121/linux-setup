@@ -14,7 +14,6 @@ already installed.
 - `config/wezterm/` — terminal config
 - `packages/pacman.txt` — official-repo packages
 - `packages/aur.txt` — AUR packages
-- `packages/ground-up.txt` — toolchain for [ground-up](https://github.com/bpatel1121/ground-up) (FPGA flow, cross-compilers, QEMU, perf); delete on machines that don't need it
 - `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
 - `local-run` — secret-injection wrapper (see below)
 
@@ -35,7 +34,7 @@ cd ~/Projects/linux-setup && git pull && ./setup.sh
 ## What setup.sh does
 
 1. `pacman -Syu`, then the base toolchain (`base-devel git curl zsh tmux`).
-2. Installs `packages/pacman.txt` (+ `packages/ground-up.txt` if present).
+2. Installs `packages/pacman.txt`.
 3. Bootstraps `yay` from `yay-bin` (prebuilt — no Go compile). Don't put `yay`
    itself in `aur.txt`: it conflicts with `yay-bin` as a provider.
 4. Installs `packages/aur.txt`. If the batch fails it retries package-by-package,

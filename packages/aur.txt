@@ -3,7 +3,3 @@
 claude-code
 claude-desktop
 wezterm-git
-
-# ground-up project toolchain (AUR side)
-icestorm                  # iCE40 bitstream tools (icepack/iceprog) — Sprint 3
-riscv-gnu-toolchain-bin   # RISC-V cross compiler — Sprint 4-5 (big download)

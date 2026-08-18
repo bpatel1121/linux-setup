@@ -1,3 +1,5 @@
+adw-gtk-theme
+awww
 base
 base-devel
 bat
@@ -6,8 +8,10 @@ bluez-utils
 brightnessctl
 btop
 btrfs-progs
-code
+capitaine-cursors
+cava
 efibootmgr
+fastfetch
 fd
 firefox
 foot
@@ -18,7 +22,9 @@ gnome-keyring
 grim
 grub
 gst-plugin-pipewire
+hypridle
 hyprland
+hyprlock
 hyprpaper
 jre-openjdk
 lazygit
@@ -35,6 +41,7 @@ noto-fonts-emoji
 obsidian
 openssh
 pacman-contrib
+papirus-icon-theme
 pipewire
 pipewire-alsa
 pipewire-jack
@@ -42,6 +49,7 @@ pipewire-pulse
 polkit-kde-agent
 qt5-wayland
 qt6-wayland
+qt6ct
 ripgrep
 rustup
 sddm
@@ -49,6 +57,7 @@ slurp
 snapper
 sof-firmware
 spotify-launcher
+starship
 sudo
 tmux
 ttf-jetbrains-mono-nerd
@@ -58,6 +67,7 @@ waybar
 wget
 wireplumber
 wl-clipboard
+wlogout
 wofi
 xdg-desktop-portal-hyprland
 yazi

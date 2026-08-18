@@ -130,3 +130,8 @@ stty -ixon
 
 #Zoxide
 eval "$(zoxide init --cmd cd zsh)"
+
+# Starship prompt — themed per-desktop-theme: theme-apply.sh symlinks
+# ~/.config/starship.toml to the active theme's starship.toml. Guarded so a
+# box without starship just keeps the oh-my-zsh prompt above.
+command -v starship >/dev/null && eval "$(starship init zsh)"

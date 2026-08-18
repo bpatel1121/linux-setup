@@ -74,11 +74,7 @@ install_base() {
 # --- 2. pacman packages ------------------------------------------------------
 install_pacman_packages() {
   local -a pkgs
-  # ground-up.txt: toolchain for the ground-up project (FPGA flow, cross
-  # compilers, QEMU, perf). Separate file so the core list stays lean — delete
-  # the file and nothing else changes.
-  mapfile -t pkgs < <(cat <(read_pkg_list "$REPO_DIR/packages/pacman.txt") \
-                          <(read_pkg_list "$REPO_DIR/packages/ground-up.txt") | sort -u)
+  mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/pacman.txt" | sort -u)
   if ((${#pkgs[@]} == 0)); then warn "no pacman packages listed"; return 0; fi
 
   info "Installing ${#pkgs[@]} pacman package(s)"
@@ -336,8 +332,7 @@ enable_services() {
 #   4. explicit leaves (-Qqet): the true "stuff I chose" list
 audit_packages() {
   local all_lists
-  all_lists=$(cat <(read_pkg_list "$REPO_DIR/packages/pacman.txt") \
-                  <(read_pkg_list "$REPO_DIR/packages/ground-up.txt") | sort -u)
+  all_lists=$(read_pkg_list "$REPO_DIR/packages/pacman.txt" | sort -u)
 
   info "Explicit REPO packages not in packages/*.txt (drift — hardware is expected here):"
   comm -23 <(pacman -Qqen | sort) <(printf '%s\n' "$all_lists") | sed 's/^/    /'
