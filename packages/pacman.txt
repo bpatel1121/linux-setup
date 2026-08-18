@@ -24,6 +24,7 @@ gnome-keyring
 grim
 grub
 gst-plugin-pipewire
+gvfs                # GIO http backend — swaync fetches remote album art through it
 hypridle
 hyprland
 hyprlock
