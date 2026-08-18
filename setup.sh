@@ -176,6 +176,19 @@ install_hypr() {
   ok "hyprland config ready"
 }
 
+# The SDDM greeter is the one themed surface that lives outside ~/.config —
+# SDDM runs as its own user and reads /usr/share/sddm/themes, so installing it
+# needs root. The hypr repo's script handles the copy + the /etc/sddm.conf.d
+# drop-in; sudo is already warm here, which is what makes this seamless on a
+# fresh box. Never fatal: a theme with no sddm/ dir (or a failed install) just
+# leaves the stock login screen.
+install_sddm_theme() {
+  local script="$CONFIG_HOME/hypr/scripts/sddm-apply.sh"
+  [[ -f "$script" ]] || { warn "sddm-apply.sh not found in hypr repo — skipping login theme"; return 0; }
+  info "Theming the SDDM login screen"
+  sudo bash "$script" || warn "SDDM theme install failed — login screen left stock"
+}
+
 # --- 7. dotfile symlinks -----------------------------------------------------
 # Links repo dirs into ~/.config. Existing real files/dirs get moved to a
 # timestamped backup rather than clobbered.
@@ -348,6 +361,7 @@ main() {
   enable_services
   install_oh_my_zsh
   install_hypr      # before link_configs: wezterm.lua reads the theme tree
+  install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
   link_configs
   install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
 

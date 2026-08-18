@@ -49,6 +49,7 @@ playerctl
 polkit-kde-agent
 qt5-wayland
 qt6-wayland
+qt6-imageformats
 qt6ct
 ripgrep
 rustup

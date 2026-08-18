@@ -45,7 +45,9 @@ cd ~/Projects/linux-setup && git pull && ./setup.sh
    screen with no network.
 6. Clones oh-my-zsh + `zsh-autosuggestions` / `zsh-syntax-highlighting`, and
    `chsh`es to zsh.
-7. Clones the **Hyprland config** (see below) into `~/.config/hypr`.
+7. Clones the **Hyprland config** (see below) into `~/.config/hypr`, then runs
+   its `sddm-apply.sh` so the SDDM login screen matches the desktop theme
+   (skipped gracefully if the active theme ships no `sddm/` dir).
 8. Symlinks `config/*` → `~/.config/<name>` and the root dotfiles → `~`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.
