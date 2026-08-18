@@ -66,9 +66,9 @@ switcher, and the themes themselves — is
 *is* `~/.config/hypr`. `setup.sh` clones it there directly; there's nothing to
 link.
 
-That repo owns `~/.config/mako/config` too — `scripts/theme-apply.sh` repoints it
-on every theme switch, so `~/.config/mako` must stay a real directory and is
-deliberately not managed here.
+That repo owns `~/.config/swaync` (and legacy `~/.config/mako`) too —
+`scripts/theme-apply.sh` repoints their configs on every theme switch, so those
+directories stay real and are deliberately not managed here.
 
 After provisioning, apply the active theme with:
 

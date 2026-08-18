@@ -31,7 +31,6 @@ linux
 linux-firmware
 linux-headers
 lvm2
-mako
 man-db
 man-pages
 neovim
@@ -60,6 +59,8 @@ sof-firmware
 spotify-launcher
 starship
 sudo
+swaync
+swayosd
 tmux
 ttf-jetbrains-mono-nerd
 ufw

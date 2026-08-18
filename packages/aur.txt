@@ -1,5 +1,6 @@
 # Foreign/AUR packages (yay itself is bootstrapped as yay-bin by setup.sh —
 # never list it here; strip -debug split-packages when regenerating).
+bibata-cursor-theme-bin
 claude-code
 claude-desktop
 wezterm-git
