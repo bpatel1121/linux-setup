@@ -10,3 +10,6 @@
 .DS_Store
 *.swp
 *~
+
+# Python bytecode (todoman imports config.py)
+__pycache__/
