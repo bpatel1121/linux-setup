@@ -10,6 +10,8 @@ btop
 btrfs-progs
 capitaine-cursors
 cava
+cmake
+cpio
 efibootmgr
 fastfetch
 fd

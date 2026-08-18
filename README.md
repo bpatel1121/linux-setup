@@ -1,5 +1,7 @@
 # linux-setup
 
+![ci](https://github.com/bpatel1121/linux-setup/actions/workflows/ci.yml/badge.svg)
+
 My Arch Linux dotfiles and packages, plus a `setup.sh` that recreates a working
 environment on a new machine in one command: packages, `yay`, oh-my-zsh, the
 Hyprland desktop config, every dotfile symlinked, and LazyVim with its plugins

@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q shellcheck lua5.4 zsh
+
+      - name: Shellcheck provisioner + tools
+        run: |
+          shellcheck -S warning setup.sh local-run
+          bash -n setup.sh
+          bash -n local-run
+
+      - name: Package lists are clean (no duplicates, no stray whitespace)
+        run: |
+          for f in packages/pacman.txt packages/aur.txt; do
+            clean=$(sed -e 's/#.*//' -e 's/[[:space:]]\+//g' -e '/^$/d' "$f")
+            dupes=$(printf '%s\n' "$clean" | sort | uniq -d)
+            if [ -n "$dupes" ]; then echo "duplicates in $f:"; echo "$dupes"; exit 1; fi
+            echo "OK $f ($(printf '%s\n' "$clean" | wc -l) packages)"
+          done
+
+      - name: Neovim config Lua syntax
+        run: |
+          find config/nvim -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p
+          echo "nvim lua OK"
+
+      - name: Dotfiles shell syntax
+        run: |
+          bash -n .bashrc
+          zsh -n .zshrc
+          echo "dotfiles OK"
