@@ -25,7 +25,6 @@ gst-plugin-pipewire
 hypridle
 hyprland
 hyprlock
-hyprpaper
 jre-openjdk
 lazygit
 linux
@@ -46,6 +45,7 @@ pipewire
 pipewire-alsa
 pipewire-jack
 pipewire-pulse
+playerctl
 polkit-kde-agent
 qt5-wayland
 qt6-wayland

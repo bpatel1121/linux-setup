@@ -102,37 +102,13 @@ install_yay() {
   ok "yay installed"
 }
 
-# --- 4. Spotify GPG key ------------------------------------------------------
-# The AUR `spotify` PKGBUILD verifies the upstream .deb against Spotify's signing
-# key. If the key isn't in your keyring, the build fails with
-# "unknown public key" — this is the single most common failure on a fresh box.
-import_spotify_key() {
-  local key="C85668DF69375001"
-  if gpg --list-keys "$key" &>/dev/null; then
-    ok "Spotify signing key already in keyring"
-    return 0
-  fi
-  info "Importing Spotify signing key ($key)"
-  if curl -fsSL "https://download.spotify.com/debian/pubkey_${key}.gpg" | gpg --import -; then
-    ok "Spotify key imported"
-  else
-    warn "Could not import Spotify key — the spotify build will likely fail."
-    warn "Fallback: sudo pacman -S spotify-launcher  (official repo, no AUR, no key dance)"
-  fi
-}
-
-# --- 5. AUR packages ---------------------------------------------------------
+# --- 4. AUR packages ---------------------------------------------------------
 # packages/aur.txt is the single source of truth. Note that `yay` itself does not
 # belong in it: install_yay bootstraps yay-bin, and the two conflict as providers.
 install_aur_packages() {
   local -a pkgs
   mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u)
   if ((${#pkgs[@]} == 0)); then warn "no AUR packages to install"; return 0; fi
-
-  # Only fuss with the GPG key if spotify is actually in the set.
-  if printf '%s\n' "${pkgs[@]}" | grep -qx 'spotify'; then
-    import_spotify_key
-  fi
 
   info "Installing ${#pkgs[@]} AUR package(s) via yay"
   if yay -S --needed --noconfirm -- "${pkgs[@]}"; then
@@ -152,7 +128,7 @@ install_aur_packages() {
   return 0
 }
 
-# --- 6. oh-my-zsh + plugins --------------------------------------------------
+# --- 5. oh-my-zsh + plugins --------------------------------------------------
 # Cloned directly rather than piping install.sh into a shell: the official
 # installer wants to rewrite ~/.zshrc and run chsh, both of which fight with a
 # provisioner that owns the dotfiles. A clone is the same result, fully idempotent.
@@ -187,7 +163,7 @@ install_oh_my_zsh() {
   fi
 }
 
-# --- 7. hyprland desktop config ----------------------------------------------
+# --- 6. hyprland desktop config ----------------------------------------------
 # Hyprland, waybar, wofi and mako are all installed from packages/pacman.txt, but
 # none of them are configured by this repo — the whole desktop lives in a separate
 # repo whose root *is* ~/.config/hypr (hyprland.lua + scripts/ + themes/). So it's
@@ -200,7 +176,7 @@ install_hypr() {
   ok "hyprland config ready"
 }
 
-# --- 8. dotfile symlinks -----------------------------------------------------
+# --- 7. dotfile symlinks -----------------------------------------------------
 # Links repo dirs into ~/.config. Existing real files/dirs get moved to a
 # timestamped backup rather than clobbered.
 link() {
@@ -262,7 +238,7 @@ link_configs() {
   esac
 }
 
-# --- 9. LazyVim --------------------------------------------------------------
+# --- 8. LazyVim --------------------------------------------------------------
 # Runs after link_configs, which has already pointed ~/.config/nvim at
 # config/nvim. All that's left is fetching the plugins.
 install_lazyvim() {
@@ -297,7 +273,7 @@ install_lazyvim() {
   fi
 }
 
-# --- 10. system services -----------------------------------------------------
+# --- 9. system services -----------------------------------------------------
 # Installing a package does NOT enable its service. Without this step a truly
 # fresh box boots with no network, no display manager, no bluetooth, and an
 # inert firewall. `systemctl enable` is idempotent, so this is free on re-runs.
