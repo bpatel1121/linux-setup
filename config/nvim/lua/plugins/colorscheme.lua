@@ -14,9 +14,21 @@ local function theme_colorscheme()
     return "tokyonight" -- LazyVim's default — sane when no theme is linked yet
 end
 
+-- gruvbox styles CursorLineNr quieter than tokyonight does, and the current
+-- line number popping is worth keeping — re-assert it in gruvbox's own accent
+-- (the same "active" yellow the bar uses). tokyonight already pops by default.
+vim.api.nvim_create_autocmd("ColorScheme", {
+    group = vim.api.nvim_create_augroup("theme_cursorlinenr", { clear = true }),
+    callback = function(ev)
+        if ev.match == "gruvbox" then
+            vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
+        end
+    end,
+})
+
 return {
-    -- both schemes installed so SUPER+T never needs a plugin sync
+    -- gruvbox installed alongside LazyVim's stock tokyonight, so SUPER+T
+    -- never needs a plugin sync
     { "ellisonleao/gruvbox.nvim" },
-    { "scottmckendry/cyberdream.nvim" },
     { "LazyVim/LazyVim", opts = { colorscheme = theme_colorscheme() } },
 }
