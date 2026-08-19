@@ -189,6 +189,19 @@ install_sddm_theme() {
   sudo bash "$script" || warn "SDDM theme install failed — login screen left stock"
 }
 
+# Pacman hooks live outside any user's home (/etc/pacman.d/hooks), so they need
+# root — same shape as the SDDM step. Currently one hook: refresh waybar's
+# update counters after every transaction, so the Pac-Man chip clears whether
+# you update from the bar, a shell, or yay. Never fatal.
+install_pacman_hooks() {
+  local src="$REPO_DIR/system/pacman-hooks"
+  [[ -d "$src" ]] || return 0
+  info "Installing pacman hooks"
+  sudo install -d -m 755 /etc/pacman.d/hooks
+  sudo install -m 644 "$src"/*.hook /etc/pacman.d/hooks/ \
+    && ok "pacman hooks installed" || warn "pacman hook install failed (non-fatal)"
+}
+
 # --- 7. dotfile symlinks -----------------------------------------------------
 # Links repo dirs into ~/.config. Existing real files/dirs get moved to a
 # timestamped backup rather than clobbered.
@@ -362,6 +375,7 @@ main() {
   install_oh_my_zsh
   install_hypr      # before link_configs: wezterm.lua reads the theme tree
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
+  install_pacman_hooks
   link_configs
   install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
 

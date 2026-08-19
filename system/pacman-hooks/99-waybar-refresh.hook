@@ -1,0 +1,24 @@
+# Refresh waybar's update counters after ANY pacman transaction.
+#
+# The counters used to clear only when you updated by clicking the bar chip
+# (whose on-click sends the refresh signal itself), so an update from a normal
+# shell left the Pac-Man lit until the module's next poll. This makes the
+# refresh a property of the transaction rather than of how it was invoked:
+# `pacman -Syu`, `yay -Sua`, and the chips all behave identically.
+#
+# Runs as root PostTransaction; root may signal any user's waybar directly.
+# Signals are spelled RTMIN+N, NOT SIGRTMIN+N: procps' pkill rejects the SIG
+# prefix on real-time signals, which is exactly the silent failure this hook
+# was written to replace. `|| true` keeps a headless session (no waybar) from
+# failing the transaction. Installed to /etc/pacman.d/hooks/ by linux-setup.
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Refreshing waybar update counters...
+When = PostTransaction
+Exec = /bin/sh -c '/usr/bin/pkill -RTMIN+8 waybar || true; /usr/bin/pkill -RTMIN+9 waybar || true'
