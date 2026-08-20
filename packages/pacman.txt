@@ -61,7 +61,6 @@ ripgrep
 rustup
 sddm
 slurp
-snapper
 sof-firmware
 spotify-launcher
 starship

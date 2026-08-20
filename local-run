@@ -9,6 +9,9 @@ fi
 template="$1"
 shift
 
+# The `--` is optional but conventional; swallow it so `env` never receives it
+# as an argument (`env VAR=x --` with no command just dumps the environment).
+[[ "${1:-}" == "--" ]] && shift
 if [[ $# -lt 1 ]]; then
   echo "Error: no command given after --" >&2
   exit 1
@@ -23,7 +26,6 @@ if [[ ! -f "$HOME/.local-secrets" ]]; then
   echo "Error: ~/.local-secrets not found" >&2
   exit 1
 fi
-
 
 # Split a "KEY=VALUE" line on the FIRST '=' only, preserving every
 # '=' in the value (including trailing base64 padding like '==').
@@ -50,7 +52,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   value="$__value"
   if [[ "$value" =~ ^local://(.+)$ ]]; then
     ref="${BASH_REMATCH[1]}"
-    if [[ -z "${secrets[$ref]:-}" ]]; then
+    # -v, not -z: a secret deliberately set to the empty string still exists.
+    if [[ ! -v "secrets[$ref]" ]]; then
       echo "Error: reference local://$ref not found in ~/.local-secrets" >&2
       exit 1
     fi

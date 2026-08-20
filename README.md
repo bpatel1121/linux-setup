@@ -12,6 +12,8 @@ already installed.
 - `home/` — dotfiles stored **without** the leading dot (`home/zshrc` → `~/.zshrc`)
 - `config/nvim/` — LazyVim config (plugins pinned by `lazy-lock.json`)
 - `config/wezterm/` — terminal config
+- `config/khal/`, `config/todoman/` — calendar + tasks, one shared vdir
+- `system/` — root-owned files: the waybar pacman hook and the zram config
 - `packages/pacman.txt` — official-repo packages
 - `packages/aur.txt` — AUR packages
 - `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
@@ -45,31 +47,36 @@ symlinks in seconds instead of triggering a full system update.
 
 ## What setup.sh does
 
-1. `pacman -Syu`, then the base toolchain (`base-devel git curl zsh tmux`).
+1. `pacman -Syu`, then just enough toolchain to bootstrap `yay` (`base-devel
+   git`) — everything else comes from `packages/pacman.txt` a step later.
 2. Installs `packages/pacman.txt`.
 3. Bootstraps `yay` from `yay-bin` (prebuilt — no Go compile). Don't put `yay`
    itself in `aur.txt`: it conflicts with `yay-bin` as a provider.
 4. Installs `packages/aur.txt`. If the batch fails it retries package-by-package,
    so one dead AUR name warns instead of aborting the run.
-5. Enables system services (`NetworkManager`, `sddm`, `bluetooth`, `ufw`) and
-   activates the firewall with deny-in/allow-out defaults. Installing a package
-   does not enable its service — without this a fresh box boots to a black
-   screen with no network.
+5. Enables system services (`NetworkManager`, `sddm`, `bluetooth`, `ufw`,
+   `power-profiles-daemon`) and activates the firewall with deny-in/allow-out
+   defaults. Installing a package does not enable its service — without this a
+   fresh box boots to a black screen with no network.
 6. Clones oh-my-zsh + `zsh-autosuggestions` / `zsh-syntax-highlighting`, and
    `chsh`es to zsh.
 7. Clones the **Hyprland config** (see below) into `~/.config/hypr`, then runs
    its `sddm-apply.sh` so the SDDM login screen matches the desktop theme
    (skipped gracefully if the active theme ships no `sddm/` dir).
-8. Symlinks `config/*` → `~/.config/<name>` and `home/<name>` → `~/.<name>`. Anything
+8. Installs `system/` as root: the waybar-refresh pacman hook into
+   `/etc/pacman.d/hooks/`, and `zram-generator.conf` into `/etc/systemd/`
+   (zram-generator ships no default config, so the package alone gives you no
+   compressed swap; it takes effect at the next boot).
+9. Symlinks `config/*` → `~/.config/<name>` and `home/<name>` → `~/.<name>`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.
-9. Writes `~/.config/user-dirs.dirs` declaring `XDG_DOWNLOAD_DIR` if absent, so
+10. Writes `~/.config/user-dirs.dirs` declaring `XDG_DOWNLOAD_DIR` if absent, so
    browsers save to `~/Downloads` instead of nagging or dumping into `$HOME`.
-10. Generates `~/.ssh/id_ed25519` if this machine has no key yet (it prompts for
+11. Generates `~/.ssh/id_ed25519` if this machine has no key yet (it prompts for
    a passphrase, and never uploads the key — registering it is a browser step,
    printed at the end of the run). Keys are per-machine: generate a new one on
    each box rather than copying the private key around.
-11. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
+12. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
    so the first `nvim` launch is instant and plugins match `lazy-lock.json`.
 
 Symlinks, not copies — edit either side and both change, and `git pull` updates
@@ -102,8 +109,9 @@ Arch machine. Install whatever the hardware needs by hand after provisioning.
 
 ## Regenerating the package lists
 
-To refresh from what's currently installed — explicitly installed, repo packages
-only — then hand-sort into the two files (dropping hardware packages):
+`./setup.sh --audit` already answers "what drifted?" against these lists. To
+rebuild them from scratch instead — explicitly installed, repo packages only —
+then hand-sort into the two files (dropping hardware packages):
 
 ```
 pacman -Qqen > /tmp/repo-explicit.txt   # repo, explicit
@@ -124,8 +132,8 @@ gitignored secrets file. The secrets themselves are NEVER committed.
 
 ### Setup on a new machine
 
-`setup.sh` already makes `local-run` executable and links it to
-`~/.local/bin/local-run`, so all that's left is creating your local secrets file
+`setup.sh` already links `local-run` to `~/.local/bin/local-run`, so all
+that's left is creating your local secrets file
 (NEVER committed — gitignored):
 
 ```

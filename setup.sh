@@ -20,7 +20,6 @@ HOME_DOTFILES=(bashrc zshrc gitconfig tmux.conf)
 
 # The Hyprland/waybar/wofi/mako config is its own repo — see install_hypr.
 HYPR_REPO="https://github.com/bpatel1121/hyprland"
-LAZYVIM_STARTER="https://github.com/LazyVim/starter"
 
 # --- output helpers ----------------------------------------------------------
 c_info=$'\e[1;36m'; c_ok=$'\e[1;32m'; c_warn=$'\e[1;33m'; c_err=$'\e[1;31m'; c_off=$'\e[0m'
@@ -70,8 +69,10 @@ install_base() {
   info "Syncing repos and updating system"
   sudo pacman -Syu --noconfirm
 
-  info "Ensuring build toolchain (base-devel, git, curl, zsh, tmux)"
-  sudo pacman -S --needed --noconfirm base-devel git curl zsh tmux
+  # Only what the yay bootstrap needs before packages/pacman.txt is installed —
+  # zsh, tmux and the rest are in that list and land a step later.
+  info "Ensuring build toolchain (base-devel, git)"
+  sudo pacman -S --needed --noconfirm base-devel git
 }
 
 # --- 2. pacman packages ------------------------------------------------------
@@ -156,9 +157,13 @@ install_oh_my_zsh() {
   ok "oh-my-zsh ready"
 
   # Login shell. chsh needs your password; skip silently if already zsh.
+  # `|| true`: an unguarded command substitution under set -e would abort the
+  # whole run with no message if zsh ever went missing from packages/pacman.txt.
   local zsh_path
-  zsh_path="$(command -v zsh)"
-  if [[ "${SHELL:-}" != "$zsh_path" ]]; then
+  zsh_path="$(command -v zsh || true)"
+  if [[ -z "$zsh_path" ]]; then
+    warn "zsh not installed — skipping chsh"
+  elif [[ "${SHELL:-}" != "$zsh_path" ]]; then
     info "Setting login shell to zsh (you'll be prompted for your password)"
     chsh -s "$zsh_path" || warn "chsh failed — run manually: chsh -s $zsh_path"
   else
@@ -192,17 +197,23 @@ install_sddm_theme() {
   sudo bash "$script" || warn "SDDM theme install failed — login screen left stock"
 }
 
-# Pacman hooks live outside any user's home (/etc/pacman.d/hooks), so they need
-# root — same shape as the SDDM step. Currently one hook: refresh waybar's
-# update counters after every transaction, so the Pac-Man chip clears whether
-# you update from the bar, a shell, or yay. Never fatal.
-install_pacman_hooks() {
-  local src="$REPO_DIR/system/pacman-hooks"
+# Everything in system/ lives outside any user's home, so it needs root — same
+# shape as the SDDM step, and never fatal:
+#   pacman-hooks/  refresh waybar's update counters after every transaction, so
+#                  the Pac-Man chip clears whether you update from the bar, a
+#                  shell, or yay.
+#   zram-generator.conf  zram-generator ships NO default config and does nothing
+#                  without one, so the package alone buys you no swap. Applies
+#                  at the next boot.
+install_system_files() {
+  local src="$REPO_DIR/system"
   [[ -d "$src" ]] || return 0
-  info "Installing pacman hooks"
+  info "Installing system files (pacman hooks, zram)"
   sudo install -d -m 755 /etc/pacman.d/hooks
-  sudo install -m 644 "$src"/*.hook /etc/pacman.d/hooks/ \
+  sudo install -m 644 "$src"/pacman-hooks/*.hook /etc/pacman.d/hooks/ \
     && ok "pacman hooks installed" || warn "pacman hook install failed (non-fatal)"
+  sudo install -m 644 "$src"/zram-generator.conf /etc/systemd/zram-generator.conf \
+    && ok "zram config installed (active next boot)" || warn "zram config install failed (non-fatal)"
 }
 
 # --- 7. dotfile symlinks -----------------------------------------------------
@@ -220,11 +231,17 @@ link() {
       ok "already linked: $dest"
       return 0
     fi
-    # Almost certainly a theme link from the dotfiles repo. Do not clobber silently.
-    warn "$dest is already a symlink -> $existing"
-    warn "  refusing to replace it with $src (another repo probably owns this)."
-    warn "  If linux-setup should own it, remove the link first: rm '$dest'"
-    return 0
+    # A link into this repo (or a dangling one left by a file move) is ours to
+    # fix — that's the whole point of --link-only. Anything else belongs to
+    # another repo (the hypr theme links) and is left alone.
+    if [[ "$existing" == "$REPO_DIR"/* || ! -e "$existing" ]]; then
+      info "re-linking stale $dest -> $existing"
+    else
+      warn "$dest is already a symlink -> $existing"
+      warn "  refusing to replace it with $src (another repo probably owns this)."
+      warn "  If linux-setup should own it, remove the link first: rm '$dest'"
+      return 0
+    fi
   elif [[ -e "$dest" ]]; then
     mkdir -p "$BACKUP_DIR"
     warn "backing up existing $dest -> $BACKUP_DIR/"
@@ -257,7 +274,6 @@ link_configs() {
 
   info "Installing local-run"
   mkdir -p "$BIN_DIR"
-  chmod +x "$REPO_DIR/local-run" 2>/dev/null || true
   link "$REPO_DIR/local-run" "$BIN_DIR/local-run"
 
   case ":$PATH:" in
@@ -274,13 +290,6 @@ install_lazyvim() {
   if ! command -v nvim >/dev/null; then
     warn "neovim not installed — skipping LazyVim"
     return 0
-  fi
-
-  # Only reachable if config/nvim is missing from the repo (nothing vendored yet).
-  if [[ ! -e "$CONFIG_HOME/nvim" ]]; then
-    info "No config/nvim in the repo — cloning the LazyVim starter"
-    git clone --depth=1 "$LAZYVIM_STARTER" "$CONFIG_HOME/nvim"
-    rm -rf "$CONFIG_HOME/nvim/.git"
   fi
 
   # lua/config/lazy.lua bootstraps lazy.nvim itself on first start, so `install`
@@ -308,13 +317,12 @@ install_lazyvim() {
 # inert firewall. `systemctl enable` is idempotent, so this is free on re-runs.
 enable_services() {
   info "Enabling system services"
+  # No pre-flight unit-file scan: systemctl already fails on a missing unit,
+  # and scanning every unit file once per service was the slow way to ask.
   local s
   for s in NetworkManager sddm bluetooth ufw power-profiles-daemon; do
-    if systemctl list-unit-files --type=service | grep -q "^$s.service"; then
-      sudo systemctl enable "$s" >/dev/null 2>&1 && ok "enabled $s" || warn "could not enable $s"
-    else
-      warn "$s.service not found — is the package installed?"
-    fi
+    sudo systemctl enable "$s" >/dev/null 2>&1 \
+      && ok "enabled $s" || warn "could not enable $s — is the package installed?"
   done
 
   # ufw: enabling the unit starts the daemon, but the firewall itself must be
@@ -377,10 +385,13 @@ install_ssh_key() {
 # by the LazyVim install. Silent when the key is already known to GitHub.
 ssh_key_hint() {
   [[ -f "$SSH_KEY.pub" ]] || return 0
-  # Exit 1 = key not accepted. Any other failure (no network, no ssh) is not a
-  # reason to nag, so only prompt when we actually reached GitHub and got told no.
-  if ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-         -o ConnectTimeout=5 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+  # Match on the greeting, not the exit code: GitHub answers a *successful*
+  # auth with status 1 (it provides no shell), so piping into grep under
+  # pipefail would report every working key as unregistered.
+  local reply
+  reply="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+               -o ConnectTimeout=5 -T git@github.com 2>&1 || true)"
+  if [[ "$reply" == *"successfully authenticated"* ]]; then
     ok "ssh key is registered with GitHub"
     return 0
   fi
@@ -407,13 +418,17 @@ audit_packages() {
 
   info "Foreign (AUR) packages not in aur.txt:"
   # yay itself and -debug artifacts are expected foreigners — filter the noise.
+  # `|| true`: grep exits 1 when there is no drift, and pipefail would then
+  # abort the whole audit, silently swallowing every section below this one.
   comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) \
-    | grep -vE '^(yay|yay-bin)$|-debug$' | sed 's/^/    /'
+    | grep -vE '^(yay|yay-bin)$|-debug$' | sed 's/^/    /' || true
 
   info "Listed in the repo but NOT installed on this box:"
-  # each comm input must be ONE globally sorted stream, not two sorted lists
-  # concatenated — that's what tripped "comm: file is not in sorted order".
-  comm -13 <({ pacman -Qqen; pacman -Qqem; } | sort -u) \
+  # -Qq (everything installed), NOT -Qqe: a listed package that something else
+  # pulled in as a dependency is present, and reporting it as missing is a lie.
+  # Each comm input must also be ONE globally sorted stream, not two sorted
+  # lists concatenated — that's what tripped "comm: file is not in sorted order".
+  comm -13 <(pacman -Qq | sort -u) \
            <({ printf '%s\n' "$all_lists"; read_pkg_list "$REPO_DIR/packages/aur.txt"; } | sort -u) | sed 's/^/    /'
 
   info "Orphaned dependencies (remove with: sudo pacman -Rns \$(pacman -Qdtq)):"
@@ -462,7 +477,7 @@ main() {
   install_oh_my_zsh
   install_hypr      # before link_configs: wezterm.lua reads the theme tree
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
-  install_pacman_hooks
+  install_system_files
   setup_user_dirs
   link_configs
   install_ssh_key   # before lazyvim: plugin fetches are the slow part
