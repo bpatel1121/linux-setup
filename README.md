@@ -63,11 +63,13 @@ symlinks in seconds instead of triggering a full system update.
 8. Symlinks `config/*` → `~/.config/<name>` and `home/<name>` → `~/.<name>`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.
-9. Generates `~/.ssh/id_ed25519` if this machine has no key yet (it prompts for
+9. Writes `~/.config/user-dirs.dirs` declaring `XDG_DOWNLOAD_DIR` if absent, so
+   browsers save to `~/Downloads` instead of nagging or dumping into `$HOME`.
+10. Generates `~/.ssh/id_ed25519` if this machine has no key yet (it prompts for
    a passphrase, and never uploads the key — registering it is a browser step,
    printed at the end of the run). Keys are per-machine: generate a new one on
    each box rather than copying the private key around.
-10. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
+11. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
    so the first `nvim` launch is instant and plugins match `lazy-lock.json`.
 
 Symlinks, not copies — edit either side and both change, and `git pull` updates

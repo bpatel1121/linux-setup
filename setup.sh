@@ -328,6 +328,28 @@ enable_services() {
   fi
 }
 
+# --- 10. XDG user directories -------------------------------------------------
+# Apps read XDG_DOWNLOAD_DIR from ~/.config/user-dirs.dirs to decide where saved
+# files land. On a minimal Arch install that file doesn't exist, so browsers
+# either nag on every download or drop things in $HOME. Written directly rather
+# than pulling in xdg-user-dirs, which would also create seven directories
+# (Desktop, Templates, Public, ...) this setup never uses.
+#
+# The literal $HOME in the value is deliberate — that's the format xdg expects,
+# and it keeps the file portable across users.
+USER_DIRS="$CONFIG_HOME/user-dirs.dirs"
+
+setup_user_dirs() {
+  if [[ -f "$USER_DIRS" ]]; then
+    ok "user-dirs.dirs already present"
+    return 0
+  fi
+  info "Declaring XDG_DOWNLOAD_DIR -> ~/Downloads"
+  mkdir -p "$HOME/Downloads" "$CONFIG_HOME"
+  printf 'XDG_DOWNLOAD_DIR="$HOME/Downloads"\n' > "$USER_DIRS"
+  ok "user-dirs.dirs written"
+}
+
 # --- 11. ssh key ---------------------------------------------------------------
 # Generates this machine's git identity if it doesn't have one. Deliberately
 # does NOT upload it: that needs either a browser or a token carrying
@@ -441,6 +463,7 @@ main() {
   install_hypr      # before link_configs: wezterm.lua reads the theme tree
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
   install_pacman_hooks
+  setup_user_dirs
   link_configs
   install_ssh_key   # before lazyvim: plugin fetches are the slow part
   install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
