@@ -38,6 +38,6 @@ jobs:
 
       - name: Dotfiles shell syntax
         run: |
-          bash -n .bashrc
-          zsh -n .zshrc
+          bash -n home/bashrc
+          zsh -n home/zshrc
           echo "dotfiles OK"

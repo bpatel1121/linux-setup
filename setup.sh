@@ -12,8 +12,11 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN_DIR="$HOME/.local/bin"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d-%H%M%S)"
 
-# Dotfiles live at the repo root (not in a subdir) and link into ~ directly.
-HOME_DOTFILES=(.bashrc .zshrc .gitconfig .tmux.conf)
+# Dotfiles live in home/ WITHOUT their leading dot, and gain it when linked:
+# home/zshrc -> ~/.zshrc. Storing them undotted keeps them visible to a plain
+# `ls`, stops the repo root from looking like a second $HOME, and avoids tools
+# that refuse to index directories containing shell rc files.
+HOME_DOTFILES=(bashrc zshrc gitconfig tmux.conf)
 
 # The Hyprland/waybar/wofi/mako config is its own repo — see install_hypr.
 HYPR_REPO="https://github.com/bpatel1121/hyprland"
@@ -244,12 +247,12 @@ link_configs() {
     done
   fi
 
-  # Root-level dotfiles -> ~/<name>   (.zshrc, .gitconfig, .tmux.conf, ...)
+  # home/<name> -> ~/.<name>   (home/zshrc -> ~/.zshrc, ...)
   # Runs after install_oh_my_zsh so nothing can clobber the .zshrc link.
   info "Linking dotfiles -> $HOME"
   local f
   for f in "${HOME_DOTFILES[@]}"; do
-    link "$REPO_DIR/$f" "$HOME/$f"
+    link "$REPO_DIR/home/$f" "$HOME/.$f"
   done
 
   info "Installing local-run"

@@ -9,9 +9,7 @@ already installed.
 
 ## Contents
 
-- `.bashrc`, `.zshrc` — shell config
-- `.gitconfig` — git identity + aliases
-- `.tmux.conf` — tmux config
+- `home/` — dotfiles stored **without** the leading dot (`home/zshrc` → `~/.zshrc`)
 - `config/nvim/` — LazyVim config (plugins pinned by `lazy-lock.json`)
 - `config/wezterm/` — terminal config
 - `packages/pacman.txt` — official-repo packages
@@ -50,7 +48,7 @@ cd ~/Projects/linux-setup && git pull && ./setup.sh
 7. Clones the **Hyprland config** (see below) into `~/.config/hypr`, then runs
    its `sddm-apply.sh` so the SDDM login screen matches the desktop theme
    (skipped gracefully if the active theme ships no `sddm/` dir).
-8. Symlinks `config/*` → `~/.config/<name>` and the root dotfiles → `~`. Anything
+8. Symlinks `config/*` → `~/.config/<name>` and `home/<name>` → `~/.<name>`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.
 9. Installs LazyVim's plugins headlessly (`Lazy! install` then `Lazy! restore`),
