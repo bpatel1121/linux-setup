@@ -328,6 +328,47 @@ enable_services() {
   fi
 }
 
+# --- 11. ssh key ---------------------------------------------------------------
+# Generates this machine's git identity if it doesn't have one. Deliberately
+# does NOT upload it: that needs either a browser or a token carrying
+# admin:public_key, and a provisioner that silently registers push credentials
+# is worse than one that hands you a two-minute task. Keys are per-machine —
+# never copy id_ed25519 between boxes, generate a fresh one and add it too.
+SSH_KEY="$HOME/.ssh/id_ed25519"
+
+install_ssh_key() {
+  if [[ -f "$SSH_KEY" ]]; then
+    ok "ssh key already present ($SSH_KEY)"
+    return 0
+  fi
+
+  info "Generating an ed25519 ssh key for this machine"
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+  # -C tags the key with user@host so GitHub's key list says which box it is.
+  ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)" -f "$SSH_KEY" \
+    || { warn "ssh-keygen failed — skipping"; return 0; }
+  ok "ssh key created"
+}
+
+# Printed at the end of a run rather than mid-stream, so it isn't scrolled away
+# by the LazyVim install. Silent when the key is already known to GitHub.
+ssh_key_hint() {
+  [[ -f "$SSH_KEY.pub" ]] || return 0
+  # Exit 1 = key not accepted. Any other failure (no network, no ssh) is not a
+  # reason to nag, so only prompt when we actually reached GitHub and got told no.
+  if ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+         -o ConnectTimeout=5 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    ok "ssh key is registered with GitHub"
+    return 0
+  fi
+  echo
+  warn "This machine's ssh key is not registered with GitHub yet. Add it at"
+  warn "  https://github.com/settings/ssh/new"
+  echo
+  cat "$SSH_KEY.pub"
+}
+
 # --- audit mode: ./setup.sh --audit ------------------------------------------
 # Answers "is this box still minimal?" without installing anything:
 #   1. explicit packages on the box that the repo doesn't know about (drift —
@@ -362,12 +403,33 @@ audit_packages() {
 }
 
 # --- main --------------------------------------------------------------------
+usage() {
+  cat <<'EOF'
+Usage: ./setup.sh [MODE]
+
+  (no args)     full provision: packages, yay, services, dotfiles, LazyVim
+  --link-only   only re-link dotfiles and config/ — no packages, no updates.
+                Use after moving files around in the repo.
+  --audit       report package drift against packages/*.txt; installs nothing
+  --help        this text
+EOF
+}
+
 main() {
-  if [[ "${1:-}" == "--audit" ]]; then
-    command -v pacman >/dev/null || die "pacman not found"
-    audit_packages
-    exit 0
-  fi
+  case "${1:-}" in
+    --help|-h) usage; exit 0 ;;
+    --audit)
+      command -v pacman >/dev/null || die "pacman not found"
+      audit_packages
+      exit 0 ;;
+    --link-only)
+      link_configs
+      ok "Links refreshed."
+      [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR" || true
+      exit 0 ;;
+    "") ;;
+    *) die "unknown option: $1 (try --help)" ;;
+  esac
 
   preflight
   install_base
@@ -380,6 +442,7 @@ main() {
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
   install_pacman_hooks
   link_configs
+  install_ssh_key   # before lazyvim: plugin fetches are the slow part
   install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
 
   echo
@@ -389,6 +452,7 @@ main() {
   [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR" || true
   echo "Start a new shell, then apply the desktop theme with:"
   echo "  ~/.config/hypr/scripts/theme-apply.sh"
+  ssh_key_hint
 }
 
 main "$@"
