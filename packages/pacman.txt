@@ -34,9 +34,11 @@ lazygit
 linux
 linux-firmware
 linux-headers
+linux-lts
 lvm2
 man-db
 man-pages
+mkinitcpio
 neovim
 networkmanager
 noto-fonts-emoji
@@ -50,10 +52,11 @@ pipewire-jack
 pipewire-pulse
 playerctl
 polkit-kde-agent
+power-profiles-daemon
 qt5-wayland
-qt6-wayland
-qt6-imageformats
 qt6ct
+qt6-imageformats
+qt6-wayland
 ripgrep
 rustup
 sddm

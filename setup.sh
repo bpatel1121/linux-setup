@@ -306,7 +306,7 @@ install_lazyvim() {
 enable_services() {
   info "Enabling system services"
   local s
-  for s in NetworkManager sddm bluetooth ufw; do
+  for s in NetworkManager sddm bluetooth ufw power-profiles-daemon; do
     if systemctl list-unit-files --type=service | grep -q "^$s.service"; then
       sudo systemctl enable "$s" >/dev/null 2>&1 && ok "enabled $s" || warn "could not enable $s"
     else
