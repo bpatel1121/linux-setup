@@ -12,6 +12,7 @@ capitaine-cursors
 cava
 cmake
 cpio
+discord
 efibootmgr
 fastfetch
 fd
