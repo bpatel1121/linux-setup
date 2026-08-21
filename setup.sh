@@ -22,11 +22,18 @@ HOME_DOTFILES=(bashrc zshrc gitconfig tmux.conf)
 HYPR_REPO="https://github.com/bpatel1121/hyprland"
 
 # --- output helpers ----------------------------------------------------------
-c_info=$'\e[1;36m'; c_ok=$'\e[1;32m'; c_warn=$'\e[1;33m'; c_err=$'\e[1;31m'; c_off=$'\e[0m'
+c_info=$'\e[1;36m'
+c_ok=$'\e[1;32m'
+c_warn=$'\e[1;33m'
+c_err=$'\e[1;31m'
+c_off=$'\e[0m'
 info() { printf '%s==>%s %s\n' "$c_info" "$c_off" "$*"; }
-ok()   { printf '%s  ok%s %s\n' "$c_ok"   "$c_off" "$*"; }
+ok() { printf '%s  ok%s %s\n' "$c_ok" "$c_off" "$*"; }
 warn() { printf '%swarn%s %s\n' "$c_warn" "$c_off" "$*" >&2; }
-die()  { printf '%s err%s %s\n' "$c_err"  "$c_off" "$*" >&2; exit 1; }
+die() {
+  printf '%s err%s %s\n' "$c_err" "$c_off" "$*" >&2
+  exit 1
+}
 
 # --- preflight ---------------------------------------------------------------
 preflight() {
@@ -36,7 +43,11 @@ preflight() {
   info "Requesting sudo up front"
   sudo -v
   # Keep the sudo timestamp warm for the whole run (long AUR builds outlive the default 15m).
-  while true; do sudo -n true; sleep 60; kill -0 "$$" 2>/dev/null || exit; done 2>/dev/null &
+  while true; do
+    sudo -n true
+    sleep 60
+    kill -0 "$$" 2>/dev/null || exit
+  done 2>/dev/null &
   SUDO_KEEPALIVE_PID=$!
   trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
 }
@@ -44,7 +55,10 @@ preflight() {
 # Read a package list: strip comments, inline comments, blanks, whitespace.
 read_pkg_list() {
   local file="$1"
-  [[ -f "$file" ]] || { warn "missing $file — skipping"; return 0; }
+  [[ -f "$file" ]] || {
+    warn "missing $file — skipping"
+    return 0
+  }
   sed -e 's/#.*//' -e 's/[[:space:]]\+//g' -e '/^$/d' "$file"
 }
 
@@ -79,7 +93,10 @@ install_base() {
 install_pacman_packages() {
   local -a pkgs
   mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/pacman.txt" | sort -u)
-  if ((${#pkgs[@]} == 0)); then warn "no pacman packages listed"; return 0; fi
+  if ((${#pkgs[@]} == 0)); then
+    warn "no pacman packages listed"
+    return 0
+  fi
 
   info "Installing ${#pkgs[@]} pacman package(s)"
   # --needed skips anything already present, so this is cheap on re-runs.
@@ -99,7 +116,7 @@ install_yay() {
   tmp="$(mktemp -d)"
   # yay-bin ships a prebuilt binary — no Go toolchain, no 5-minute compile.
   git clone --depth=1 https://aur.archlinux.org/yay-bin.git "$tmp/yay-bin"
-  ( cd "$tmp/yay-bin" && makepkg -si --noconfirm )
+  (cd "$tmp/yay-bin" && makepkg -si --noconfirm)
   rm -rf "$tmp"
 
   command -v yay >/dev/null || die "yay bootstrap failed"
@@ -112,7 +129,10 @@ install_yay() {
 install_aur_packages() {
   local -a pkgs
   mapfile -t pkgs < <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u)
-  if ((${#pkgs[@]} == 0)); then warn "no AUR packages to install"; return 0; fi
+  if ((${#pkgs[@]} == 0)); then
+    warn "no AUR packages to install"
+    return 0
+  fi
 
   info "Installing ${#pkgs[@]} AUR package(s) via yay"
   if yay -S --needed --noconfirm -- "${pkgs[@]}"; then
@@ -126,7 +146,10 @@ install_aur_packages() {
   warn "batch install failed — retrying one package at a time"
   local p failed=0
   for p in "${pkgs[@]}"; do
-    yay -S --needed --noconfirm -- "$p" || { warn "AUR install failed: $p"; ((failed++)) || true; }
+    yay -S --needed --noconfirm -- "$p" || {
+      warn "AUR install failed: $p"
+      ((failed++)) || true
+    }
   done
   ((failed == 0)) && ok "AUR packages done" || warn "$failed AUR package(s) failed — see above"
   return 0
@@ -208,7 +231,10 @@ install_hypr() {
 # more than create the symlink.
 install_sddm_theme() {
   local script="$CONFIG_HOME/hypr/scripts/sddm-apply.sh"
-  [[ -f "$script" ]] || { warn "sddm-apply.sh not found in hypr repo — skipping login theme"; return 0; }
+  [[ -f "$script" ]] || {
+    warn "sddm-apply.sh not found in hypr repo — skipping login theme"
+    return 0
+  }
 
   local apply="$CONFIG_HOME/hypr/scripts/theme-apply.sh"
   [[ -f "$apply" ]] && bash "$apply" >/dev/null 2>&1 || true
@@ -219,8 +245,8 @@ install_sddm_theme() {
     # which is legitimate — but so is checking, because "succeeded" and
     # "changed the login screen" are not the same thing, and the gap between
     # them is precisely what hid the bug above for months.
-    [[ -f /etc/sddm.conf.d/10-hypr-theme.conf ]] \
-      || warn "SDDM step succeeded but wrote no drop-in — login screen is still stock"
+    [[ -f /etc/sddm.conf.d/10-hypr-theme.conf ]] ||
+      warn "SDDM step succeeded but wrote no drop-in — login screen is still stock"
   else
     warn "SDDM theme install failed — login screen left stock"
   fi
@@ -234,15 +260,38 @@ install_sddm_theme() {
 #   zram-generator.conf  zram-generator ships NO default config and does nothing
 #                  without one, so the package alone buys you no swap. Applies
 #                  at the next boot.
+#   sddm-hypr-theme.service.in  re-runs sddm-apply.sh before the greeter starts,
+#                  so the login screen follows SUPER+T without theme-switch.sh
+#                  needing root. RENDERED, not copied: systemd wants an absolute
+#                  ExecStart and no tracked file here may bake in a username —
+#                  same @PLACEHOLDER@ treatment hyprlock.conf gets in the hypr
+#                  repo. Boot rather than shutdown, because a shutdown unit is
+#                  skipped on a crash or a hard power-off and you would only
+#                  find out at the next login screen.
 install_system_files() {
   local src="$REPO_DIR/system"
   [[ -d "$src" ]] || return 0
-  info "Installing system files (pacman hooks, zram)"
+  info "Installing system files (pacman hooks, zram, sddm theme unit)"
   sudo install -d -m 755 /etc/pacman.d/hooks
-  sudo install -m 644 "$src"/pacman-hooks/*.hook /etc/pacman.d/hooks/ \
-    && ok "pacman hooks installed" || warn "pacman hook install failed (non-fatal)"
-  sudo install -m 644 "$src"/zram-generator.conf /etc/systemd/zram-generator.conf \
-    && ok "zram config installed (active next boot)" || warn "zram config install failed (non-fatal)"
+  sudo install -m 644 "$src"/pacman-hooks/*.hook /etc/pacman.d/hooks/ &&
+    ok "pacman hooks installed" || warn "pacman hook install failed (non-fatal)"
+  sudo install -m 644 "$src"/zram-generator.conf /etc/systemd/zram-generator.conf &&
+    ok "zram config installed (active next boot)" || warn "zram config install failed (non-fatal)"
+
+  # `|` as the sed delimiter since $HOME contains slashes. Rendered to a temp
+  # file first so a failed sed can never leave a half-written unit in /etc.
+  local unit=/etc/systemd/system/sddm-hypr-theme.service tmp
+  tmp=$(mktemp)
+  if sed "s|@HOME@|$HOME|g" "$src"/sddm-hypr-theme.service.in >"$tmp" &&
+    sudo install -m 644 "$tmp" "$unit"; then
+    sudo systemctl daemon-reload
+    sudo systemctl enable sddm-hypr-theme.service >/dev/null 2>&1 &&
+      ok "sddm theme unit installed (greeter follows the theme from next boot)" ||
+      warn "sddm theme unit installed but enable failed (non-fatal)"
+  else
+    warn "sddm theme unit install failed (non-fatal) — greeter will not auto-follow"
+  fi
+  rm -f "$tmp"
 }
 
 # --- 7. dotfile symlinks -----------------------------------------------------
@@ -251,7 +300,10 @@ install_system_files() {
 link() {
   local src="$1" dest="$2"
 
-  [[ -e "$src" ]] || { warn "source missing: $src — skipping"; return 0; }
+  [[ -e "$src" ]] || {
+    warn "source missing: $src — skipping"
+    return 0
+  }
 
   if [[ -L "$dest" ]]; then
     local existing
@@ -306,9 +358,11 @@ link_configs() {
   link "$REPO_DIR/local-run" "$BIN_DIR/local-run"
 
   case ":$PATH:" in
-    *":$BIN_DIR:"*) ;;
-    *) warn "$BIN_DIR is not on your PATH — add it in ~/.zshrc:"
-       warn '  export PATH="$HOME/.local/bin:$PATH"' ;;
+  *":$BIN_DIR:"*) ;;
+  *)
+    warn "$BIN_DIR is not on your PATH — add it in ~/.zshrc:"
+    warn '  export PATH="$HOME/.local/bin:$PATH"'
+    ;;
   esac
 }
 
@@ -350,17 +404,17 @@ enable_services() {
   # and scanning every unit file once per service was the slow way to ask.
   local s
   for s in NetworkManager sddm bluetooth ufw power-profiles-daemon; do
-    sudo systemctl enable "$s" >/dev/null 2>&1 \
-      && ok "enabled $s" || warn "could not enable $s — is the package installed?"
+    sudo systemctl enable "$s" >/dev/null 2>&1 &&
+      ok "enabled $s" || warn "could not enable $s — is the package installed?"
   done
 
   # ufw: enabling the unit starts the daemon, but the firewall itself must be
   # turned on once with sane defaults. Idempotent: skip if already active.
   if command -v ufw >/dev/null && ! sudo ufw status | grep -q "^Status: active"; then
     info "Activating ufw (deny incoming / allow outgoing)"
-    sudo ufw default deny incoming  >/dev/null
+    sudo ufw default deny incoming >/dev/null
     sudo ufw default allow outgoing >/dev/null
-    sudo ufw --force enable         >/dev/null
+    sudo ufw --force enable >/dev/null
     ok "ufw active"
   fi
 }
@@ -383,7 +437,7 @@ setup_user_dirs() {
   fi
   info "Declaring XDG_DOWNLOAD_DIR -> ~/Downloads"
   mkdir -p "$HOME/Downloads" "$CONFIG_HOME"
-  printf 'XDG_DOWNLOAD_DIR="$HOME/Downloads"\n' > "$USER_DIRS"
+  printf 'XDG_DOWNLOAD_DIR="$HOME/Downloads"\n' >"$USER_DIRS"
   ok "user-dirs.dirs written"
 }
 
@@ -405,8 +459,11 @@ install_ssh_key() {
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
   # -C tags the key with user@host so GitHub's key list says which box it is.
-  ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)" -f "$SSH_KEY" \
-    || { warn "ssh-keygen failed — skipping"; return 0; }
+  ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)" -f "$SSH_KEY" ||
+    {
+      warn "ssh-keygen failed — skipping"
+      return 0
+    }
   ok "ssh key created"
 }
 
@@ -419,7 +476,7 @@ ssh_key_hint() {
   # pipefail would report every working key as unregistered.
   local reply
   reply="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-               -o ConnectTimeout=5 -T git@github.com 2>&1 || true)"
+    -o ConnectTimeout=5 -T git@github.com 2>&1 || true)"
   if [[ "$reply" == *"successfully authenticated"* ]]; then
     ok "ssh key is registered with GitHub"
     return 0
@@ -437,7 +494,6 @@ ssh_key_hint() {
 #      hardware packages are EXPECTED here, that's the per-box set)
 #   2. packages in the lists but missing from the box
 #   3. orphaned dependencies nothing requires anymore
-#   4. explicit leaves (-Qqet): the true "stuff I chose" list
 audit_packages() {
   local all_lists
   all_lists=$(read_pkg_list "$REPO_DIR/packages/pacman.txt" | sort -u)
@@ -449,8 +505,8 @@ audit_packages() {
   # yay itself and -debug artifacts are expected foreigners — filter the noise.
   # `|| true`: grep exits 1 when there is no drift, and pipefail would then
   # abort the whole audit, silently swallowing every section below this one.
-  comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) \
-    | grep -vE '^(yay|yay-bin)$|-debug$' | sed 's/^/    /' || true
+  comm -23 <(pacman -Qqem | sort) <(read_pkg_list "$REPO_DIR/packages/aur.txt" | sort -u) |
+    grep -vE '^(yay|yay-bin)$|-debug$' | sed 's/^/    /' || true
 
   info "Listed in the repo but NOT installed on this box:"
   # -Qq (everything installed), NOT -Qqe: a listed package that something else
@@ -458,14 +514,13 @@ audit_packages() {
   # Each comm input must also be ONE globally sorted stream, not two sorted
   # lists concatenated — that's what tripped "comm: file is not in sorted order".
   comm -13 <(pacman -Qq | sort -u) \
-           <({ printf '%s\n' "$all_lists"; read_pkg_list "$REPO_DIR/packages/aur.txt"; } | sort -u) | sed 's/^/    /'
+    <({
+      printf '%s\n' "$all_lists"
+      read_pkg_list "$REPO_DIR/packages/aur.txt"
+    } | sort -u) | sed 's/^/    /'
 
   info "Orphaned dependencies (remove with: sudo pacman -Rns \$(pacman -Qdtq)):"
   pacman -Qdtq 2>/dev/null | sed 's/^/    /' || ok "none"
-
-  echo
-  info "Full explicit-leaf list (explicit AND nothing depends on it):"
-  pacman -Qqet | sed 's/^/    /'
 }
 
 # --- main --------------------------------------------------------------------
@@ -483,18 +538,23 @@ EOF
 
 main() {
   case "${1:-}" in
-    --help|-h) usage; exit 0 ;;
-    --audit)
-      command -v pacman >/dev/null || die "pacman not found"
-      audit_packages
-      exit 0 ;;
-    --link-only)
-      link_configs
-      ok "Links refreshed."
-      [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR" || true
-      exit 0 ;;
-    "") ;;
-    *) die "unknown option: $1 (try --help)" ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  --audit)
+    command -v pacman >/dev/null || die "pacman not found"
+    audit_packages
+    exit 0
+    ;;
+  --link-only)
+    link_configs
+    ok "Links refreshed."
+    [[ -d "$BACKUP_DIR" ]] && warn "Replaced configs were backed up to $BACKUP_DIR" || true
+    exit 0
+    ;;
+  "") ;;
+  *) die "unknown option: $1 (try --help)" ;;
   esac
 
   preflight
@@ -504,13 +564,13 @@ main() {
   install_aur_packages
   enable_services
   install_oh_my_zsh
-  install_hypr      # before link_configs: wezterm.lua reads the theme tree
+  install_hypr       # before link_configs: wezterm.lua reads the theme tree
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
   install_system_files
   setup_user_dirs
   link_configs
-  install_ssh_key   # before lazyvim: plugin fetches are the slow part
-  install_lazyvim   # after link_configs: needs ~/.config/nvim to exist
+  install_ssh_key # before lazyvim: plugin fetches are the slow part
+  install_lazyvim # after link_configs: needs ~/.config/nvim to exist
 
   echo
   ok "Provisioning complete."

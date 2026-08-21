@@ -13,7 +13,8 @@ already installed.
 - `config/nvim/` — LazyVim config (plugins pinned by `lazy-lock.json`)
 - `config/wezterm/` — terminal config
 - `config/khal/`, `config/todoman/` — calendar + tasks, one shared vdir
-- `system/` — root-owned files: the waybar pacman hook and the zram config
+- `system/` — root-owned files: the waybar pacman hook, the zram config, and
+  the SDDM theme unit (`.in`, rendered — see below)
 - `packages/pacman.txt` — official-repo packages
 - `packages/aur.txt` — AUR packages
 - `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
@@ -64,9 +65,21 @@ symlinks in seconds instead of triggering a full system update.
    its `sddm-apply.sh` so the SDDM login screen matches the desktop theme
    (skipped gracefully if the active theme ships no `sddm/` dir).
 8. Installs `system/` as root: the waybar-refresh pacman hook into
-   `/etc/pacman.d/hooks/`, and `zram-generator.conf` into `/etc/systemd/`
+   `/etc/pacman.d/hooks/`, `zram-generator.conf` into `/etc/systemd/`
    (zram-generator ships no default config, so the package alone gives you no
-   compressed swap; it takes effect at the next boot).
+   compressed swap; it takes effect at the next boot), and
+   `sddm-hypr-theme.service`, which re-runs the hypr repo's `sddm-apply.sh`
+   before the greeter starts so the login screen follows `SUPER+T` on its own.
+
+   The unit is **rendered** from `sddm-hypr-theme.service.in`, substituting
+   `@HOME@`, because systemd needs an absolute `ExecStart` and no tracked file
+   in this repo may contain a username — the same treatment `hyprlock.conf`
+   gets in the hypr repo. It runs at **boot**, not shutdown: a shutdown unit is
+   skipped on a crash or a hard power-off, and the drop-in is only read when
+   SDDM starts anyway. Note this means root executes a script inside `$HOME` at
+   every boot; on a single-user box that is the usual trade for not granting
+   passwordless sudo, but point `ExecStart` at a root-owned copy if you would
+   rather not make it.
 9. Symlinks `config/*` → `~/.config/<name>` and `home/<name>` → `~/.<name>`. Anything
    real that's in the way is moved to `~/.config-backup/<timestamp>/` first;
    symlinks owned by another repo are left alone with a warning.

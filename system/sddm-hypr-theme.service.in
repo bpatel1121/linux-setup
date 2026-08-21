@@ -1,0 +1,25 @@
+[Unit]
+Description=Point SDDM at the active hyprland theme
+Documentation=https://github.com/bpatel1121/hyprland
+
+# Boot, not shutdown. The drop-in only matters at the moment SDDM reads its
+# config, and a boot-time unit still runs after a crash or a hard power-off —
+# a shutdown unit silently does not, which is exactly the "worked until it
+# didn't" failure this whole thing already had once.
+After=local-fs.target
+Before=display-manager.service
+
+# themes/current is gitignored machine state. If it is absent (fresh clone,
+# never themed) skip cleanly rather than failing the unit and leaving a red
+# line in `systemctl --failed` forever.
+ConditionPathExists=@HOME@/.config/hypr/themes/current
+
+[Service]
+Type=oneshot
+ExecStart=@HOME@/.config/hypr/scripts/sddm-apply.sh
+# The greeter install is idempotent and the login screen is not worth failing
+# a boot over. A bad run leaves the previous theme, same as doing nothing.
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=graphical.target
