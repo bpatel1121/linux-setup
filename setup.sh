@@ -190,11 +190,40 @@ install_hypr() {
 # drop-in; sudo is already warm here, which is what makes this seamless on a
 # fresh box. Never fatal: a theme with no sddm/ dir (or a failed install) just
 # leaves the stock login screen.
+#
+# ORDER MATTERS, and used to be wrong in a way that never showed up as an
+# error. sddm-apply.sh refuses when themes/current is missing — and that
+# symlink is gitignored MACHINE state, so the clone install_hypr just made
+# does not have one. The only thing that creates it is theme-apply.sh, which
+# this script merely *suggested* on its last line. So on every fresh box the
+# SDDM step ran, exited 1 for a perfectly good reason, got swallowed by the
+# `|| warn` below, and left a stock login screen that looked like a theme
+# nobody had gotten around to configuring.
+#
+# Running theme-apply.sh here fixes it at the source: it owns the default
+# theme name (this script must not duplicate it), it is idempotent, and it is
+# what the end-of-run hint tells you to run anyway. It is safe with no session
+# yet — it is `set -uo pipefail` without -e, and every hyprctl/pkill/wallpaper
+# call inside is individually `|| true` guarded, so headless it does little
+# more than create the symlink.
 install_sddm_theme() {
   local script="$CONFIG_HOME/hypr/scripts/sddm-apply.sh"
   [[ -f "$script" ]] || { warn "sddm-apply.sh not found in hypr repo — skipping login theme"; return 0; }
+
+  local apply="$CONFIG_HOME/hypr/scripts/theme-apply.sh"
+  [[ -f "$apply" ]] && bash "$apply" >/dev/null 2>&1 || true
+
   info "Theming the SDDM login screen"
-  sudo bash "$script" || warn "SDDM theme install failed — login screen left stock"
+  if sudo bash "$script"; then
+    # sddm-apply.sh exits 0 when the active theme simply ships no sddm/ dir,
+    # which is legitimate — but so is checking, because "succeeded" and
+    # "changed the login screen" are not the same thing, and the gap between
+    # them is precisely what hid the bug above for months.
+    [[ -f /etc/sddm.conf.d/10-hypr-theme.conf ]] \
+      || warn "SDDM step succeeded but wrote no drop-in — login screen is still stock"
+  else
+    warn "SDDM theme install failed — login screen left stock"
+  fi
 }
 
 # Everything in system/ lives outside any user's home, so it needs root — same
