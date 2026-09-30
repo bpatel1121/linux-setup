@@ -441,6 +441,25 @@ setup_user_dirs() {
   ok "user-dirs.dirs written"
 }
 
+# --- 10b. conda prompt ---------------------------------------------------------
+# Conda prefixes PS1 with "(base)" on its own. starship's [conda] module already
+# draws the env as a glyph, so turn conda's prefix off. Miniforge is installed by
+# hand (not in packages/), so this is a no-op on a box without it. Idempotent:
+# `conda config --set` just rewrites the same key in ~/.condarc.
+configure_conda() {
+  local conda="$HOME/miniforge3/bin/conda"
+  [[ -x "$conda" ]] || conda="$(command -v conda || true)"
+  [[ -n "$conda" ]] || return 0
+  # Also don't auto-activate base, so a new shell is env-free and the starship
+  # glyph only appears after `conda activate`, same as the venv chip.
+  # (newer conda renamed auto_activate_base -> auto_activate; try both.)
+  "$conda" config --set changeps1 false &&
+    { "$conda" config --set auto_activate false 2>/dev/null ||
+      "$conda" config --set auto_activate_base false; } &&
+    ok "conda: no (base) prefix, no auto-activate (starship shows the env)" ||
+    warn "could not update conda config (non-fatal)"
+}
+
 # --- 11. ssh key ---------------------------------------------------------------
 # Generates this machine's git identity if it doesn't have one. Deliberately
 # does NOT upload it: that needs either a browser or a token carrying
@@ -568,6 +587,7 @@ main() {
   install_sddm_theme # after install_hypr: runs the hypr repo's sddm-apply.sh
   install_system_files
   setup_user_dirs
+  configure_conda
   link_configs
   install_ssh_key # before lazyvim: plugin fetches are the slow part
   install_lazyvim # after link_configs: needs ~/.config/nvim to exist
