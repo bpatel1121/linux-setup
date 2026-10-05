@@ -8,7 +8,6 @@ bluez-utils
 brightnessctl
 btop
 btrfs-progs
-capitaine-cursors
 cava
 cmake
 cmatrix
@@ -24,7 +23,6 @@ git
 github-cli
 gnome-keyring
 grim
-grub
 gst-plugin-pipewire
 gvfs                # GIO http backend — swaync fetches remote album art through it
 hypridle
@@ -62,6 +60,7 @@ qt6-wayland
 quickshell
 ripgrep
 rustup
+sbctl
 sddm
 slurp
 sof-firmware
