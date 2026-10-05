@@ -18,7 +18,7 @@ BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d-%H%M%S)"
 # that refuse to index directories containing shell rc files.
 HOME_DOTFILES=(bashrc zshrc gitconfig tmux.conf)
 
-# The Hyprland/waybar/wofi/mako config is its own repo — see install_hypr.
+# The Hyprland desktop config (and its Quickshell shell) is its own repo — see install_hypr.
 HYPR_REPO="https://github.com/bpatel1121/hyprland"
 
 # --- output helpers ----------------------------------------------------------
@@ -195,7 +195,7 @@ install_oh_my_zsh() {
 }
 
 # --- 6. hyprland desktop config ----------------------------------------------
-# Hyprland, waybar, wofi and mako are all installed from packages/pacman.txt, but
+# Hyprland, quickshell and swaync are all installed from packages/pacman.txt, but
 # none of them are configured by this repo — the whole desktop lives in a separate
 # repo whose root *is* ~/.config/hypr (hyprland.lua + scripts/ + themes/). So it's
 # a plain clone into place, nothing to link. Without it a fresh box comes up with
@@ -254,9 +254,6 @@ install_sddm_theme() {
 
 # Everything in system/ lives outside any user's home, so it needs root — same
 # shape as the SDDM step, and never fatal:
-#   pacman-hooks/  refresh waybar's update counters after every transaction, so
-#                  the Pac-Man chip clears whether you update from the bar, a
-#                  shell, or yay.
 #   zram-generator.conf  zram-generator ships NO default config and does nothing
 #                  without one, so the package alone buys you no swap. Applies
 #                  at the next boot.
@@ -271,10 +268,10 @@ install_sddm_theme() {
 install_system_files() {
   local src="$REPO_DIR/system"
   [[ -d "$src" ]] || return 0
-  info "Installing system files (pacman hooks, zram, sddm theme unit)"
-  sudo install -d -m 755 /etc/pacman.d/hooks
-  sudo install -m 644 "$src"/pacman-hooks/*.hook /etc/pacman.d/hooks/ &&
-    ok "pacman hooks installed" || warn "pacman hook install failed (non-fatal)"
+  info "Installing system files (zram, sddm theme unit)"
+  # The waybar-refresh pacman hook used to go in here; the Quickshell bar polls
+  # its update counters itself, so there is nothing left to signal.
+  sudo rm -f /etc/pacman.d/hooks/99-waybar-refresh.hook
   sudo install -m 644 "$src"/zram-generator.conf /etc/systemd/zram-generator.conf &&
     ok "zram config installed (active next boot)" || warn "zram config install failed (non-fatal)"
 

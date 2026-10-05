@@ -5,4 +5,3 @@ claude-code
 claude-desktop
 poweralertd
 wezterm-git
-wlogout

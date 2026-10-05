@@ -13,8 +13,8 @@ already installed.
 - `config/nvim/` — LazyVim config (plugins pinned by `lazy-lock.json`)
 - `config/wezterm/` — terminal config
 - `config/khal/`, `config/todoman/` — calendar + tasks, one shared vdir
-- `system/` — root-owned files: the waybar pacman hook, the zram config, and
-  the SDDM theme unit (`.in`, rendered — see below)
+- `system/` — root-owned files: the zram config and the SDDM theme unit
+  (`.in`, rendered — see below)
 - `packages/pacman.txt` — official-repo packages
 - `packages/aur.txt` — AUR packages
 - `setup.sh` — one-shot provisioner (packages + yay + symlinks + LazyVim)
@@ -64,8 +64,7 @@ symlinks in seconds instead of triggering a full system update.
 7. Clones the **Hyprland config** (see below) into `~/.config/hypr`, then runs
    its `sddm-apply.sh` so the SDDM login screen matches the desktop theme
    (skipped gracefully if the active theme ships no `sddm/` dir).
-8. Installs `system/` as root: the waybar-refresh pacman hook into
-   `/etc/pacman.d/hooks/`, `zram-generator.conf` into `/etc/systemd/`
+8. Installs `system/` as root: `zram-generator.conf` into `/etc/systemd/`
    (zram-generator ships no default config, so the package alone gives you no
    compressed swap; it takes effect at the next boot), and
    `sddm-hypr-theme.service`, which re-runs the hypr repo's `sddm-apply.sh`
@@ -97,7 +96,7 @@ the live config immediately.
 
 ## The Hyprland config lives in a separate repo
 
-`hyprland`, `waybar`, `wofi`, and `mako` are installed from `pacman.txt`, but
+`hyprland`, `quickshell`, and `swaync` are installed from `pacman.txt`, but
 none of them are configured here. The whole desktop — `hyprland.lua`, the theme
 switcher, and the themes themselves — is
 [bpatel1121/hyprland](https://github.com/bpatel1121/hyprland), whose repo root
